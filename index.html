@@ -777,14 +777,79 @@ body {
 
   <!-- 실물자산 -->
   <div id="at-real" style="display:none">
-    <div class="section" style="padding-left:20px;padding-right:20px">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-header-title">총 실물자산</div>
-          <div class="card-header-value" id="at-real-total">—</div>
+    <!-- 서브탭 -->
+    <div style="padding:12px 20px 0;display:flex;gap:8px">
+      <button class="real-sub-btn" onclick="setRealSub('list')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">🏠 자산목록</button>
+      <button class="real-sub-btn" onclick="setRealSub('tax')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">🧮 양도세 계산</button>
+    </div>
+
+    <!-- 자산 목록 -->
+    <div id="real-sub-list">
+      <div class="section" style="padding-left:20px;padding-right:20px">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-title">총 실물자산 (세전)</div>
+            <div class="card-header-value" id="at-real-total">—</div>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item"><div class="summary-label">총 취득가</div><div class="summary-value" id="at-real-buy">—</div></div>
+            <div class="summary-item"><div class="summary-label">평가차익</div><div class="summary-value pos" id="at-real-gain">—</div></div>
+            <div class="summary-item"><div class="summary-label">예상 양도세</div><div class="summary-value neg" id="at-real-tax">—</div></div>
+            <div class="summary-item"><div class="summary-label">세후 순자산</div><div class="summary-value" id="at-real-net">—</div></div>
+          </div>
+        </div>
+        <div class="card" id="realListCard"></div>
+      </div>
+    </div>
+
+    <!-- 양도세 계산기 -->
+    <div id="real-sub-tax" style="display:none">
+      <div class="section" style="padding-left:20px;padding-right:20px">
+        <div style="background:#FFF9E6;border:1px solid #FFD700;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:11px;color:#856404;line-height:1.6">
+          ⚠️ <strong>참고용 추정치입니다.</strong> 실제 양도세는 취득세·중개수수료 등 필요경비, 일시적 2주택 특례 등에 따라 달라집니다. 정확한 세금은 반드시 <strong>세무사 상담</strong>을 받으세요.
+        </div>
+        <div class="card">
+          <div style="padding:16px 20px 8px;font-size:14px;font-weight:700">🧮 양도세 계산기</div>
+          <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">부동산 선택</label>
+              <select id="tax-asset" onchange="onTaxAssetChange()" class="form-input form-select">
+                <option value="">— 직접 입력 또는 선택 —</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">취득가액 (원)</label>
+                <input type="text" id="tax-buy" class="form-input num" placeholder="0" inputmode="numeric" oninput="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">양도가액 (원)</label>
+                <input type="text" id="tax-sell" class="form-input num" placeholder="0" inputmode="numeric" oninput="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">취득일</label>
+                <input type="month" id="tax-buy-date" class="form-input" onchange="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">양도예정일</label>
+                <input type="month" id="tax-sell-date" class="form-input" value="2026-04" onchange="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">주택 수</label>
+                <select id="tax-houses" class="form-input form-select" onchange="calcTransferTax()">
+                  <option value="1">1주택</option>
+                  <option value="2" selected>2주택</option>
+                  <option value="3">3주택 이상</option>
+                </select></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">조정대상지역</label>
+                <select id="tax-adj" class="form-input form-select" onchange="calcTransferTax()">
+                  <option value="yes">조정대상지역</option>
+                  <option value="no">비조정지역</option>
+                </select></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">실거주 기간 (년)</label>
+                <input type="number" id="tax-live" class="form-input" placeholder="0" min="0" max="30" oninput="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">필요경비 (원)</label>
+                <input type="text" id="tax-cost" class="form-input num" placeholder="취득세+중개비 등" inputmode="numeric" oninput="calcTransferTax()"></div>
+            </div>
+          </div>
+        </div>
+        <div id="tax-result" style="display:none">
+          <div class="card"><div style="padding:16px 20px 6px;font-size:14px;font-weight:700">📊 계산 결과</div>
+            <div style="padding:0 20px 16px"><div id="tax-result-content"></div></div>
+          </div>
         </div>
       </div>
-      <div class="card" id="realListCard"></div>
     </div>
   </div>
 
@@ -796,6 +861,14 @@ body {
      ═══════════════════════════════════ -->
 <div id="page-debt" class="page">
 <div class="page-inner">
+  <!-- 부채 서브탭 -->
+  <div style="padding:16px 20px 0;display:flex;gap:8px">
+    <button class="debt-sub-btn" onclick="setDebtSub('loan')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">🏦 대출</button>
+    <button class="debt-sub-btn" onclick="setDebtSub('install')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">💳 할부</button>
+  </div>
+
+  <!-- 대출 섹션 -->
+  <div id="debt-sub-loan">
   <div class="section" style="padding-top:16px;padding-left:20px;padding-right:20px">
     <div class="card">
       <div class="card-header">
@@ -814,6 +887,33 @@ body {
     </div>
   </div>
 </div>
+
+  </div><!-- /debt-sub-loan -->
+
+  <!-- 할부 섹션 -->
+  <div id="debt-sub-install" style="display:none">
+    <div class="section" style="padding-top:16px;padding-left:20px;padding-right:20px">
+      <!-- 할부 요약 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-title">💳 할부 현황</div>
+          <div class="card-header-value neg" id="install-total-monthly">—</div>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item"><div class="summary-label">진행 중</div><div class="summary-value" id="install-active-cnt">—</div></div>
+          <div class="summary-item"><div class="summary-label">총 잔여금액</div><div class="summary-value neg" id="install-remain-total">—</div></div>
+          <div class="summary-item"><div class="summary-label">이번달 납부</div><div class="summary-value neg" id="install-this-month">—</div></div>
+          <div class="summary-item"><div class="summary-label">완료 예정</div><div class="summary-value" id="install-end-date">—</div></div>
+        </div>
+      </div>
+      <!-- 할부 목록 -->
+      <div id="installListCard" class="card"></div>
+      <!-- 이번달 현금흐름 반영 버튼 -->
+      <button onclick="applyInstallToCf()" class="btn btn-green" style="width:100%;margin-top:4px;margin-bottom:16px">
+        💳 이번달 할부 현금흐름에 반영
+      </button>
+    </div>
+  </div>
 
 </div><!-- /page-inner -->
 </div><!-- /page-debt -->
@@ -943,6 +1043,7 @@ body {
       <div class="seg-tab active" onclick="setInputTab('invest')">투자</div>
       <div class="seg-tab" onclick="setInputTab('bank')">계좌</div>
       <div class="seg-tab" onclick="setInputTab('debt')">부채</div>
+      <div class="seg-tab" onclick="setInputTab('install')">💳 할부</div>
       <div class="seg-tab" onclick="setInputTab('real')">실물</div>
       <div class="seg-tab" onclick="setInputTab('cf')">현금흐름</div>
       <div class="seg-tab" onclick="setInputTab('fixed')">🔒 고정</div>
@@ -1101,7 +1202,7 @@ body {
         </div>
         <div class="form-group">
           <label class="form-label">종류</label>
-          <select class="form-input form-select" id="debt-type">
+          <select class="form-input form-select" id="debt-type" onchange="calcDebtMonthly()">
             <option value="주담대">주담대</option>
             <option value="전세대출">전세대출</option>
             <option value="신용대출">신용대출</option>
@@ -1114,19 +1215,15 @@ body {
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">현재 잔액 (원)</label>
-          <input type="text" class="form-input num" id="debt-balance" placeholder="0" inputmode="numeric">
+          <label class="form-label">대출 잔액 (원)</label>
+          <input type="text" class="form-input num" id="debt-balance" placeholder="0" inputmode="numeric" oninput="calcDebtMonthly()">
         </div>
         <div class="form-group">
-          <label class="form-label">금리 (%)</label>
-          <input type="number" class="form-input" id="debt-rate" placeholder="0.0" step="0.1" min="0">
+          <label class="form-label">연 금리 (%)</label>
+          <input type="number" class="form-input" id="debt-rate" placeholder="0.0" step="0.01" min="0" oninput="calcDebtMonthly()">
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">월 납입액 (원)</label>
-          <input type="text" class="form-input num" id="debt-monthly" placeholder="0" inputmode="numeric">
-        </div>
         <div class="form-group">
           <label class="form-label">금리 유형</label>
           <select class="form-input form-select" id="debt-rate-type">
@@ -1135,21 +1232,66 @@ body {
             <option value="혼합">혼합금리</option>
           </select>
         </div>
+        <div class="form-group">
+          <label class="form-label">상환 방식</label>
+          <select class="form-input form-select" id="debt-repay-type" onchange="calcDebtMonthly()">
+            <option value="원리금균등">원리금균등</option>
+            <option value="원금균등">원금균등</option>
+            <option value="만기일시">만기일시상환</option>
+            <option value="이자만">이자만납부</option>
+          </select>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">대출 실행일</label>
-          <input type="month" class="form-input" id="debt-start">
+          <input type="month" class="form-input" id="debt-start" onchange="calcDebtMonthly()">
         </div>
         <div class="form-group">
           <label class="form-label">만기일</label>
-          <input type="month" class="form-input" id="debt-end">
+          <input type="month" class="form-input" id="debt-end" onchange="calcDebtMonthly()">
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">메모</label>
-        <input type="text" class="form-input" id="debt-memo" placeholder="메모 (선택)">
+
+      <!-- 자동 계산 결과 -->
+      <div id="debt-calc-result" style="display:none;background:var(--primary-l);border-radius:12px;padding:14px;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">📊 자동 계산 결과</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">월 납입액</div>
+            <div id="dc-monthly" style="font-size:15px;font-weight:800;color:var(--text)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">이 중 이자</div>
+            <div id="dc-interest" style="font-size:15px;font-weight:800;color:var(--red)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">이 중 원금</div>
+            <div id="dc-principal" style="font-size:15px;font-weight:800;color:var(--green)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">남은 기간</div>
+            <div id="dc-remain" style="font-size:15px;font-weight:800;color:var(--text)">—</div>
+          </div>
+        </div>
+        <div id="dc-total" style="margin-top:8px;background:#fff;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--sub)">총 이자 부담 (잔여)</span>
+          <span id="dc-total-interest" style="font-size:14px;font-weight:800;color:var(--red)">—</span>
+        </div>
       </div>
+
+      <!-- 월 납입액 (자동입력 or 직접입력) -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">월 납입액 (원) <span style="font-size:10px;color:var(--primary);font-weight:600">↑자동계산</span></label>
+          <input type="text" class="form-input num" id="debt-monthly" placeholder="자동계산 또는 직접입력" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label">메모</label>
+          <input type="text" class="form-input" id="debt-memo" placeholder="메모 (선택)">
+        </div>
+      </div>
+
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveDebtEntry()">💾 저장</button>
         <button class="btn btn-ghost btn-sm" onclick="clearDebtForm()">↺ 초기화</button>
@@ -1264,6 +1406,104 @@ body {
         <select id="cf-filter-month" onchange="renderCfLog()" style="padding:5px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff"><option value="">전체</option></select>
       </div>
       <div id="cf-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:var(--shadow-s)"></div>
+    </div>
+  </div>
+
+  <!-- 할부 입력 -->
+  <div id="inp-install" style="display:none">
+    <div class="form-card">
+      <div class="form-title">💳 할부 등록</div>
+      <p style="font-size:12px;color:var(--sub);margin-bottom:14px">카드할부·자동차할부 등 분할납부 항목을 등록하세요</p>
+      <div class="form-group">
+        <label class="form-label">할부명</label>
+        <input type="text" class="form-input" id="inst-name" placeholder="예: 아이폰 카드할부, 자동차 할부">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">카테고리</label>
+          <select class="form-input form-select" id="inst-cat">
+            <option value="카드할부">카드할부</option>
+            <option value="자동차할부">자동차할부</option>
+            <option value="가전할부">가전할부</option>
+            <option value="의료할부">의료할부</option>
+            <option value="기타할부">기타할부</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">카드/금융사</label>
+          <input type="text" class="form-input" id="inst-company" placeholder="삼성카드, 현대캐피탈 등">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">총 할부금액 (원)</label>
+          <input type="text" class="form-input num" id="inst-total" placeholder="0" inputmode="numeric" oninput="calcInstallment()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">할부 개월 수</label>
+          <input type="number" class="form-input" id="inst-months" placeholder="12" min="1" max="84" oninput="calcInstallment()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">시작 년/월</label>
+          <input type="month" class="form-input" id="inst-start" onchange="calcInstallment()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">할부 금리 (%)</label>
+          <input type="number" class="form-input" id="inst-rate" placeholder="0 (무이자)" min="0" step="0.1" oninput="calcInstallment()">
+        </div>
+      </div>
+
+      <!-- 자동계산 결과 -->
+      <div id="inst-calc" style="display:none;background:var(--primary-l);border-radius:12px;padding:14px;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">📊 할부 계산</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">월 납입액</div>
+            <div id="ic-monthly" style="font-size:15px;font-weight:800;color:var(--text)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">잔여 횟수</div>
+            <div id="ic-remain" style="font-size:15px;font-weight:800;color:var(--primary)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">잔여 금액</div>
+            <div id="ic-remain-amt" style="font-size:15px;font-weight:800;color:var(--red)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">완료 예정</div>
+            <div id="ic-end" style="font-size:15px;font-weight:800;color:var(--green)">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 연동 옵션 -->
+      <div style="background:var(--gray-50);border-radius:10px;padding:12px 14px;margin-top:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🔗 자동 연동</div>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer">
+          <input type="checkbox" id="inst-to-fixed" checked style="width:16px;height:16px">
+          <span style="font-size:12px">🔒 고정지출에 자동 추가</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="inst-to-cf" checked style="width:16px;height:16px">
+          <span style="font-size:12px">💳 이번달 현금흐름에 자동 반영</span>
+        </label>
+      </div>
+
+      <div class="form-group" style="margin-top:10px">
+        <label class="form-label">메모</label>
+        <input type="text" class="form-input" id="inst-memo" placeholder="메모 (선택)">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveInstallEntry()">💾 저장</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearInstallForm()">↺ 초기화</button>
+      </div>
+    </div>
+    <!-- 할부 목록 -->
+    <div style="padding:0 20px 16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">📋 할부 목록</div>
+      <div id="inst-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:var(--shadow-s)"></div>
     </div>
   </div>
 
@@ -1580,7 +1820,7 @@ function getHeaders(sheetKey) {
   const map = {
     invest: ['acct','month','dep','wd','depCum','wdCum','curr','depItems','wdItems'],
     bank:   ['id','name','company','type','balance','rate','month','maturity','memo'],
-    debt:   ['id','name','company','type','balance','rate','rateType','monthly','start','end','memo'],
+    debt:   ['id','name','company','type','balance','rate','rateType','repayType','monthly','start','end','memo'],
     real:   ['id','name','type','owner','buyPrice','currPrice','buyDate','month','memo'],
     cf:     ['id','month','inout','category','amount','memo'],
     goals:  ['id','name','type','targetAmount','currentAmount','targetDate','memo'],
@@ -1982,12 +2222,229 @@ function renderBankAssets(){
       </div>
     </div>`).join('') || '<div class="empty"><div class="empty-icon">🏦</div><div class="empty-text">계좌를 추가해주세요</div><div class="empty-sub">✏️ 입력 탭에서 추가</div></div>';
 }
+// 실물자산 서브탭
+let realSubTab='list';
+function setRealSub(t){
+  realSubTab=t;
+  document.getElementById('real-sub-list').style.display=t==='list'?'block':'none';
+  document.getElementById('real-sub-tax').style.display=t==='tax'?'block':'none';
+  document.querySelectorAll('.real-sub-btn').forEach((btn,i)=>{
+    const active=['list','tax'][i]===t;
+    btn.style.background=active?'var(--primary)':'var(--gray-100)';
+    btn.style.color=active?'#fff':'var(--gray-600)';
+  });
+  if(t==='tax') initTaxCalc();
+}
+
+// 양도세 계산기 초기화
+function initTaxCalc(){
+  const sel=document.getElementById('tax-asset');
+  if(!sel)return;
+  const realMap={};
+  DB.real.forEach(r=>{ if(!realMap[r.name]||r.month>realMap[r.name].month) realMap[r.name]=r; });
+  const items=Object.values(realMap).filter(r=>r.type==='아파트'||r.type==='주택'||r.type==='분양권');
+  sel.innerHTML='<option value="">— 부동산 선택 —</option>'+
+    items.map(r=>`<option value="${r.name}">${r.name}</option>`).join('');
+}
+
+function onTaxAssetChange(){
+  const name=document.getElementById('tax-asset').value;
+  if(!name)return;
+  const realMap={};
+  DB.real.forEach(r=>{ if(!realMap[r.name]||r.month>realMap[r.name].month) realMap[r.name]=r; });
+  const r=realMap[name];
+  if(!r)return;
+  setComma('tax-buy',r.buyPrice);
+  setComma('tax-sell',r.currPrice);
+  if(r.buyDate) document.getElementById('tax-buy-date').value=r.buyDate;
+  calcTransferTax();
+}
+
+function calcTransferTax(){
+  const buyPrice=rawNum('tax-buy');
+  const sellPrice=rawNum('tax-sell');
+  const buyDate=document.getElementById('tax-buy-date').value;
+  const sellDate=document.getElementById('tax-sell-date').value;
+  const houses=Number(document.getElementById('tax-houses').value);
+  const isAdj=document.getElementById('tax-adj').value==='yes';
+  const liveYears=Number(document.getElementById('tax-live').value)||0;
+  const cost=rawNum('tax-cost');
+  const resultEl=document.getElementById('tax-result');
+  const contentEl=document.getElementById('tax-result-content');
+  if(!buyPrice||!sellPrice){resultEl.style.display='none';return;}
+
+  // 보유 기간 계산
+  const buyMo=buyDate?new Date(buyDate+'-01'):new Date();
+  const sellMo=sellDate?new Date(sellDate+'-01'):new Date();
+  const holdMonths=Math.max(0,Math.floor((sellMo-buyMo)/(1000*60*60*24*30.44)));
+  const holdYears=holdMonths/12;
+
+  // 양도차익
+  const gain=sellPrice-buyPrice-cost;
+
+  // 1주택 비과세 체크 (12억 이하, 2년 이상 보유)
+  let taxFreeNote='';
+  let taxableGain=gain;
+
+  if(houses===1 && holdYears>=2 && gain>0){
+    if(sellPrice<=1200000000){
+      // 완전 비과세
+      const result=buildResult({gain,taxableGain:0,tax:0,holdYears,holdMonths,liveYears,sellPrice,buyPrice,cost,note:'✅ 1주택 비과세 요건 충족 (양도가 12억 이하, 2년 보유)'});
+      contentEl.innerHTML=result;
+      resultEl.style.display='block';
+      return;
+    } else {
+      // 고가주택 과세 (12억 초과분만)
+      taxableGain=gain*(sellPrice-1200000000)/sellPrice;
+      taxFreeNote=`1주택 고가주택: 12억 초과분(${fmtM(taxableGain)})만 과세`;
+    }
+  }
+
+  if(gain<=0){
+    contentEl.innerHTML=`<div style="text-align:center;padding:16px;color:var(--sub)">양도차익이 없어 양도세가 발생하지 않습니다.<br><small>양도차익: ${fmtN(gain)}원</small></div>`;
+    resultEl.style.display='block';
+    return;
+  }
+
+  // 장기보유특별공제율
+  let ltcRate=0;
+  if(holdYears>=3){
+    if(houses===1){
+      // 1주택: 보유 4%/년 + 거주 4%/년 (최대 80%)
+      const holdDeduct=Math.min(Math.floor(holdYears)*4,40);
+      const liveDeduct=Math.min(liveYears*4,40);
+      ltcRate=Math.min(holdDeduct+liveDeduct,80);
+    } else {
+      // 다주택: 일반 2%/년 (최대 30%) — 조정지역 다주택은 미적용
+      if(!(houses>=2&&isAdj)){
+        ltcRate=Math.min(Math.floor(holdYears)*2,30);
+      }
+    }
+  }
+
+  // 과세표준 계산
+  const ltcDeduct=taxableGain*(ltcRate/100);
+  const basicDeduct=2500000; // 기본공제 250만원
+  const taxBase=Math.max(0,taxableGain-ltcDeduct-basicDeduct);
+
+  // 세율 (기본세율)
+  let taxRate=0, progressiveTax=0;
+  if(houses>=2&&isAdj){
+    // 조정지역 다주택 중과세율
+    taxRate = houses===2 ? 0.20 : 0.30; // 2주택+20%p, 3주택+30%p 중과
+    // 기본 세율에 중과
+    const {rate,prog}=getBasicTaxRate(taxBase);
+    taxRate=rate+taxRate;
+    progressiveTax=prog;
+  } else {
+    // 일반세율
+    if(holdMonths<12) taxRate=0.70; // 1년 미만 70%
+    else if(holdMonths<24) taxRate=0.60; // 2년 미만 60%
+    else {
+      const {rate,prog}=getBasicTaxRate(taxBase);
+      taxRate=rate; progressiveTax=prog;
+    }
+  }
+
+  let tax=0;
+  if(taxRate===0.70||taxRate===0.60){
+    tax=taxBase*taxRate;
+  } else {
+    tax=progressiveTax;
+  }
+
+  // 지방소득세 (10%)
+  const localTax=tax*0.1;
+  const totalTax=tax+localTax;
+
+  contentEl.innerHTML=buildResult({gain,taxableGain,taxBase,ltcRate,ltcDeduct,basicDeduct,tax,localTax,totalTax,holdYears,holdMonths,liveYears,sellPrice,buyPrice,cost,taxFreeNote,taxRate,houses,isAdj});
+  resultEl.style.display='block';
+}
+
+function getBasicTaxRate(taxBase){
+  // 2024년 기준 양도세 기본세율 (누진세)
+  const brackets=[
+    {limit:14000000,   rate:0.06, deduct:0},
+    {limit:50000000,   rate:0.15, deduct:1260000},
+    {limit:88000000,   rate:0.24, deduct:5760000},
+    {limit:150000000,  rate:0.35, deduct:15440000},
+    {limit:300000000,  rate:0.38, deduct:19940000},
+    {limit:500000000,  rate:0.40, deduct:25940000},
+    {limit:1000000000, rate:0.42, deduct:35940000},
+    {limit:Infinity,   rate:0.45, deduct:65940000},
+  ];
+  for(const b of brackets){
+    if(taxBase<=b.limit){
+      return {rate:b.rate, prog:taxBase*b.rate-b.deduct};
+    }
+  }
+  return {rate:0.45, prog:taxBase*0.45-65940000};
+}
+
+function buildResult({gain,taxableGain,taxBase,ltcRate,ltcDeduct,basicDeduct,tax,localTax,totalTax,holdYears,holdMonths,liveYears,sellPrice,buyPrice,cost,taxFreeNote,taxRate,note,houses,isAdj}){
+  const row=(label,value,color='')=>`
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-100);font-size:12px">
+      <span style="color:var(--sub)">${label}</span>
+      <span style="font-weight:600;color:${color||'var(--text)'}">${value}</span>
+    </div>`;
+
+  if(note){
+    return `<div style="background:var(--green-l);border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:24px;margin-bottom:6px">🎉</div>
+      <div style="font-size:13px;font-weight:700;color:var(--green)">${note}</div>
+      <div style="font-size:11px;color:var(--sub);margin-top:6px">양도세: 0원</div>
+    </div>`;
+  }
+
+  return `
+    ${taxFreeNote?`<div style="background:var(--primary-l);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--primary);margin-bottom:10px">${taxFreeNote}</div>`:''}
+    ${row('보유 기간',Math.floor(holdYears)+'년 '+Math.round((holdYears%1)*12)+'개월')}
+    ${row('취득가액',fmtN(buyPrice)+'원')}
+    ${row('양도가액',fmtN(sellPrice)+'원')}
+    ${row('필요경비',fmtN(cost)+'원')}
+    ${row('양도차익',fmtN(gain)+'원',gain>=0?'var(--red)':'var(--green)')}
+    ${ltcRate>0?row(`장기보유특별공제 (${ltcRate}%)`,'-'+fmtN(ltcDeduct)+'원','var(--green)'):''}
+    ${row('기본공제','-'+fmtN(basicDeduct||2500000)+'원')}
+    ${row('과세표준',fmtN(taxBase)+'원')}
+    ${row('적용세율',(taxRate*100).toFixed(0)+'%'+(houses>=2&&isAdj?' (중과)':''))}
+    <div style="height:8px"></div>
+    ${row('양도소득세',fmtN(Math.max(0,tax))+'원','var(--red)')}
+    ${row('지방소득세 (10%)',fmtN(Math.max(0,localTax))+'원','var(--red)')}
+    <div style="background:var(--red-l);border-radius:10px;padding:12px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:700;color:var(--red)">총 납부세액 (예상)</span>
+      <span style="font-size:20px;font-weight:900;color:var(--red)">-${fmtN(Math.max(0,totalTax))}원</span>
+    </div>
+    <div style="background:var(--green-l);border-radius:10px;padding:12px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:700;color:var(--green)">세후 실수령액 (예상)</span>
+      <span style="font-size:20px;font-weight:900;color:var(--green)">${fmtN(Math.max(0,sellPrice-totalTax))}원</span>
+    </div>
+    <div style="font-size:10px;color:var(--sub);margin-top:10px;line-height:1.6">* 2024년 기준 세율 적용 / 실제 세액은 세무사 상담 필요</div>`;
+}
+
 function renderRealAssets(){
   const realMap={};
   DB.real.forEach(r=>{ if(!realMap[r.name]||r.month>realMap[r.name].month) realMap[r.name]=r; });
   const items=Object.values(realMap).sort((a,b)=>b.currPrice-a.currPrice);
   const total=items.reduce((s,r)=>s+(r.currPrice||0),0);
+  const totalBuy=items.reduce((s,r)=>s+(r.buyPrice||0),0);
+  const totalGain=total-totalBuy;
+
+  // 양도세 추정 (보유 2주택 기준 간단 추정)
+  let estTax=0;
+  items.filter(r=>r.type==='아파트'||r.type==='주택').forEach(r=>{
+    const g=(r.currPrice||0)-(r.buyPrice||0);
+    if(g>0) estTax+=g*0.33; // 대략 33% 추정
+  });
+
   document.getElementById('at-real-total').textContent=fmtM(total);
+  const buyEl=document.getElementById('at-real-buy');
+  const gainEl=document.getElementById('at-real-gain');
+  const taxEl=document.getElementById('at-real-tax');
+  const netEl=document.getElementById('at-real-net');
+  if(buyEl) buyEl.textContent=fmtN(totalBuy);
+  if(gainEl){ gainEl.textContent=(totalGain>=0?'+':'')+fmtN(totalGain); gainEl.className='summary-value '+(totalGain>=0?'pos':'neg'); }
+  if(taxEl) taxEl.textContent='≈-'+fmtN(estTax);
+  if(netEl) netEl.textContent=fmtN(total-estTax);
   const typeIcon={'아파트':'🏢','주택':'🏠','분양권':'📋','토지':'🌱','상가':'🏪','자동차':'🚗','기타':'📦'};
   document.getElementById('realListCard').innerHTML = items.map(r=>{
     const pnl=(r.currPrice||0)-(r.buyPrice||0);
@@ -2009,6 +2466,182 @@ function renderRealAssets(){
 // ═══════════════════════════════════════════════════════════
 // 🏦 부채 렌더
 // ═══════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════
+// 💳 할부 관리
+// ══════════════════════════════════════════════════════
+const NOWMO2 = ()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); };
+
+function getInstallRemain(r){
+  if(!r.start||!r.months) return 0;
+  const start=new Date(r.start+'-01');
+  const now=new Date();
+  const elapsed=Math.max(0,Math.floor((now-start)/(1000*60*60*24*30.44)));
+  return Math.max(0, Number(r.months)-elapsed);
+}
+
+function setDebtSub(t){
+  document.getElementById('debt-sub-loan').style.display=t==='loan'?'block':'none';
+  document.getElementById('debt-sub-install').style.display=t==='install'?'block':'none';
+  document.querySelectorAll('.debt-sub-btn').forEach((btn,i)=>{
+    const active=['loan','install'][i]===t;
+    btn.style.background=active?'var(--primary)':'var(--gray-100)';
+    btn.style.color=active?'#fff':'var(--gray-600)';
+  });
+  if(t==='install') renderInstallList();
+}
+
+function calcInstallment(){
+  const total=rawNum('inst-total');
+  const months=Number(document.getElementById('inst-months').value)||0;
+  const rate=Number(document.getElementById('inst-rate').value)||0;
+  const start=document.getElementById('inst-start').value;
+  const calcEl=document.getElementById('inst-calc');
+  if(!total||!months){if(calcEl)calcEl.style.display='none';return;}
+  const mr=rate/100/12;
+  const monthly=rate===0?Math.round(total/months):Math.round(total*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1));
+  const remain=start?getInstallRemain({start,months}):months;
+  const remainAmt=monthly*remain;
+  let endDate='—';
+  if(start){const s=new Date(start+'-01');s.setMonth(s.getMonth()+months-1);endDate=s.getFullYear()+'년 '+(s.getMonth()+1)+'월';}
+  const e=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  e('ic-monthly',fmtN(monthly)+'원');e('ic-remain',remain+'회');
+  e('ic-remain-amt',fmtN(remainAmt)+'원');e('ic-end',endDate);
+  if(calcEl)calcEl.style.display='block';
+}
+
+async function saveInstallEntry(){
+  const name=document.getElementById('inst-name').value.trim();
+  if(!name){showToast('할부명을 입력해주세요','warn');return;}
+  const total=rawNum('inst-total');
+  const months=Number(document.getElementById('inst-months').value)||0;
+  if(!total||!months){showToast('금액과 개월 수를 입력해주세요','warn');return;}
+  const rate=Number(document.getElementById('inst-rate').value)||0;
+  const start=document.getElementById('inst-start').value||NOWMO2();
+  const mr=rate/100/12;
+  const monthly=rate===0?Math.round(total/months):Math.round(total*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1));
+  const s2=new Date(start+'-01');s2.setMonth(s2.getMonth()+months-1);
+  const endDate=s2.getFullYear()+'-'+String(s2.getMonth()+1).padStart(2,'0');
+  const id='inst_'+Date.now();
+  const rec={id,name,cat:document.getElementById('inst-cat').value,
+    company:document.getElementById('inst-company').value,
+    totalAmt:total,months,monthly,rate,start,end:endDate,
+    remainMonths:getInstallRemain({start,months}),status:'진행중',
+    memo:document.getElementById('inst-memo').value};
+  await gasUpsert('install',rec);
+  if(document.getElementById('inst-to-fixed').checked){
+    await gasUpsert('fixed',{id:'fixed_inst_'+id,name:'[할부]'+name,
+      cat:'기타 정기지출',amount:monthly,day:'0',status:'활성',
+      start,end:endDate,autoApply:false,memo:'할부 자동등록'});
+  }
+  if(document.getElementById('inst-to-cf').checked){
+    const mo=NOWMO2();
+    await gasUpsert('cf',{id:mo+'_inst_'+id,month:mo,inout:'지출',
+      category:'기타',amount:monthly,memo:'[할부]'+name});
+  }
+  clearInstallForm();renderAll();showToast('✅ 할부 등록 완료!','success');
+}
+
+function clearInstallForm(){
+  ['inst-name','inst-company','inst-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['inst-total','inst-months','inst-rate','inst-start'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const c=document.getElementById('inst-calc');if(c)c.style.display='none';
+}
+
+function renderInstallList(){
+  const el=document.getElementById('installListCard');if(!el)return;
+  const items=(DB.install||[]).filter(r=>r.status!=='완료').sort((a,b)=>b.monthly-a.monthly);
+  const totalMonthly=items.reduce((s,r)=>s+(r.monthly||0),0);
+  const totalRemain=items.reduce((s,r)=>s+((r.monthly||0)*getInstallRemain(r)),0);
+  const thisMonth=items.reduce((s,r)=>s+(getInstallRemain(r)>0?r.monthly:0),0);
+  const e=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  e('install-total-monthly','-'+fmtN(totalMonthly)+'/월');
+  e('install-active-cnt',items.length+'건');
+  e('install-remain-total',fmtN(Math.round(totalRemain)));
+  e('install-this-month','-'+fmtN(thisMonth));
+  const ends=items.map(r=>r.end).filter(Boolean).sort();
+  e('install-end-date',ends.length?ends.slice(-1)[0].slice(0,7).replace('-','년 ')+'월':'—');
+  if(!items.length){el.innerHTML='<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">등록된 할부가 없어요</div><div class="empty-sub">✏️ 입력 → 💳 할부 탭에서 추가</div></div>';return;}
+  el.innerHTML=items.map((r,i)=>{
+    const remain=getInstallRemain(r);
+    const paid=Number(r.months)-remain;
+    const pct=Math.round(paid/r.months*100);
+    return `<div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);${i%2?'':'background:var(--gray-50)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-size:13px;font-weight:700">${r.name}</div>
+        <div style="font-size:11px;color:var(--sub);margin-top:2px">${r.cat}${r.company?' · '+r.company:''}</div></div>
+        <div style="text-align:right">
+          <div style="font-size:14px;font-weight:800;color:var(--red)">-${fmtN(r.monthly)}/월</div>
+          <div style="font-size:10px;color:var(--sub)">${paid}/${r.months}회 납부</div>
+        </div>
+      </div>
+      <div style="background:var(--gray-200);border-radius:4px;height:6px;overflow:hidden;margin-bottom:6px">
+        <div style="height:100%;border-radius:4px;background:var(--primary);width:${pct}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub)">
+        <span>잔여 ${remain}회 · ${fmtN(r.monthly*remain)}원</span>
+        <span>완료: ${r.end?r.end.slice(0,7).replace('-','년 ')+'월':'—'}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="applySingleInstallToCf('${r.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">💳 이번달 반영</button>
+        <button onclick="completeInstall('${r.id}')" style="border:none;background:var(--green-l);color:var(--green);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">✅ 완료</button>
+        <button onclick="deleteInstallEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderInstallLog(){
+  const el=document.getElementById('inst-log-wrap');if(!el)return;
+  const items=(DB.install||[]).sort((a,b)=>b.monthly-a.monthly);
+  el.innerHTML=items.map((r,i)=>`
+    <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--gray-100);gap:10px;${i%2?'':'background:var(--gray-50)'}">
+      <div style="font-size:18px">💳</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${r.name}</div>
+        <div style="font-size:11px;color:var(--sub)">${r.cat} · 잔여 ${getInstallRemain(r)}회</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:var(--red)">-${fmtN(r.monthly)}/월</div>
+        <span style="font-size:10px;background:var(--primary-l);color:var(--primary);padding:1px 6px;border-radius:5px">${r.status}</span>
+      </div>
+      <button onclick="deleteInstallEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:5px 8px;border-radius:7px;font-size:11px;cursor:pointer">🗑</button>
+    </div>`).join('')||'<div class="empty"><div class="empty-text">등록된 할부가 없습니다</div></div>';
+}
+
+async function applyInstallToCf(){
+  const mo=NOWMO2();
+  const items=(DB.install||[]).filter(r=>r.status!=='완료'&&getInstallRemain(r)>0);
+  if(!items.length){showToast('진행중인 할부가 없습니다','warn');return;}
+  const existing=new Set(DB.cf.filter(r=>r.month===mo).map(r=>r.memo));
+  const toApply=items.filter(r=>!existing.has('[할부]'+r.name));
+  if(!toApply.length){showToast('이미 모두 반영되어 있어요','warn');return;}
+  if(!confirm(`${toApply.length}건의 할부를 ${mo} 현금흐름에 추가할까요?`))return;
+  for(const r of toApply){
+    await gasUpsert('cf',{id:mo+'_inst_'+r.id,month:mo,inout:'지출',category:'기타',amount:r.monthly,memo:'[할부]'+r.name});
+  }
+  showToast(`✅ ${toApply.length}건 반영!`,'success');renderAll();
+}
+
+async function applySingleInstallToCf(id){
+  const r=(DB.install||[]).find(i=>i.id===id);if(!r)return;
+  const mo=NOWMO2();
+  await gasUpsert('cf',{id:mo+'_inst_'+id,month:mo,inout:'지출',category:'기타',amount:r.monthly,memo:'[할부]'+r.name});
+  showToast('✅ 현금흐름 반영!','success');renderAll();
+}
+
+async function completeInstall(id){
+  const r=(DB.install||[]).find(i=>i.id===id);if(!r)return;
+  if(!confirm(`"${r.name}" 할부를 완료 처리할까요?`))return;
+  r.status='완료';await gasUpsert('install',r);
+  showToast('✅ 완료 처리됨','success');renderInstallList();
+}
+
+async function deleteInstallEntry(id){
+  if(!confirm('이 할부를 삭제할까요?'))return;
+  await gasDelete('install',id);renderAll();showToast('삭제 완료','error');
+}
+
 function renderDebt(){
   const items=DB.debt.sort((a,b)=>b.balance-a.balance);
   const total=items.reduce((s,r)=>s+(r.balance||0),0);
@@ -2390,16 +3023,107 @@ function renderBankLog(){
   const wrap=document.getElementById('bank-log-wrap'); if(!wrap)return;
   wrap.innerHTML=DB.bank.sort((a,b)=>b.balance-a.balance).map((r,i)=>`
     <div class="list-item" style="${i%2?'':'background:var(--gray-50)'}">
-      <div class="list-body"><div class="list-name">${r.name}</div><div class="list-sub">${r.company||''} · ${r.type}</div></div>
-      <div class="list-right">
+      <div class="list-body"><div class="list-name">${r.name}</div><div class="list-sub">${r.company||''} · ${r.type}${r.rate?' · '+r.rate+'%':''}</div></div>
+      <div class="list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="list-amount">${fmtN(r.balance)}</div>
-        <button onclick="deleteBankEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;margin-top:4px">삭제</button>
+        <div style="display:flex;gap:4px">
+          <button onclick="editBankEntry('${r.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:700">수정</button>
+          <button onclick="deleteBankEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:700">삭제</button>
+        </div>
       </div>
     </div>`).join('')||'<div class="empty"><div class="empty-text">계좌 없음</div></div>';
+}
+function editBankEntry(id){
+  const r=DB.bank.find(b=>b.id===id); if(!r)return;
+  document.getElementById('bank-name').value=r.name||'';
+  document.getElementById('bank-company').value=r.company||'';
+  document.getElementById('bank-type').value=r.type||'입출금';
+  setComma('bank-balance',r.balance);
+  document.getElementById('bank-rate').value=r.rate||'';
+  document.getElementById('bank-month').value=r.month||'';
+  document.getElementById('bank-maturity').value=r.maturity||'';
+  document.getElementById('bank-memo').value=r.memo||'';
+  showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 async function deleteBankEntry(id){ if(!confirm('삭제할까요?'))return; await gasDelete('bank',id); renderAll(); showToast('삭제 완료','error'); }
 
 // ── 부채 입력 ─────────────────────────────────────────────
+// ── 대출 월 납입액 자동계산 ──
+function calcDebtMonthly(){
+  const balance = rawNum('debt-balance');
+  const rate    = Number(document.getElementById('debt-rate').value)||0;
+  const repay   = document.getElementById('debt-repay-type').value;
+  const start   = document.getElementById('debt-start').value;
+  const end     = document.getElementById('debt-end').value;
+  const resultEl = document.getElementById('debt-calc-result');
+
+  if(!balance || !rate){ resultEl.style.display='none'; return; }
+
+  const monthRate = rate / 100 / 12;
+
+  // 남은 기간 계산
+  let remainMonths = 0;
+  if(start && end){
+    const s = new Date(start+'-01');
+    const e = new Date(end+'-01');
+    const now = new Date();
+    const effectiveStart = now > s ? now : s;
+    remainMonths = Math.max(1, Math.round((e - effectiveStart)/(1000*60*60*24*30.44)));
+  } else {
+    remainMonths = 120; // 기본 10년
+  }
+
+  let monthly=0, interest=0, principal=0, totalInterest=0;
+
+  if(repay === '만기일시'){
+    // 만기일시: 이자만 내다가 만기에 원금 일시상환
+    interest = Math.round(balance * monthRate);
+    principal = 0;
+    monthly = interest;
+    totalInterest = interest * remainMonths;
+  } else if(repay === '이자만'){
+    // 이자만 납부
+    interest = Math.round(balance * monthRate);
+    principal = 0;
+    monthly = interest;
+    totalInterest = interest * remainMonths;
+  } else if(repay === '원리금균등'){
+    // 원리금균등 (PMT 공식)
+    if(monthRate === 0){
+      monthly = Math.round(balance / remainMonths);
+      interest = 0;
+      principal = monthly;
+    } else {
+      monthly = Math.round(balance * monthRate * Math.pow(1+monthRate, remainMonths) / (Math.pow(1+monthRate, remainMonths)-1));
+      interest = Math.round(balance * monthRate);
+      principal = monthly - interest;
+    }
+    totalInterest = monthly * remainMonths - balance;
+  } else if(repay === '원금균등'){
+    // 원금균등: 첫 달 기준
+    principal = Math.round(balance / remainMonths);
+    interest  = Math.round(balance * monthRate);
+    monthly   = principal + interest;
+    totalInterest = (balance / remainMonths) * monthRate * (remainMonths + 1) / 2 * remainMonths;
+  }
+
+  // 결과 표시
+  const yrs = Math.floor(remainMonths/12);
+  const mos = remainMonths%12;
+  const remainStr = yrs>0 ? `${yrs}년 ${mos}개월` : `${mos}개월`;
+
+  document.getElementById('dc-monthly').textContent    = fmtN(Math.max(0,monthly))+'원';
+  document.getElementById('dc-interest').textContent   = fmtN(Math.max(0,interest))+'원';
+  document.getElementById('dc-principal').textContent  = repay==='만기일시'||repay==='이자만' ? '만기상환' : fmtN(Math.max(0,principal))+'원';
+  document.getElementById('dc-remain').textContent     = remainStr;
+  document.getElementById('dc-total-interest').textContent = fmtN(Math.max(0,Math.round(totalInterest)))+'원';
+  resultEl.style.display = 'block';
+
+  // 월납입액 자동 입력
+  setComma('debt-monthly', Math.max(0, monthly));
+}
+
 async function saveDebtEntry(){
   const name=document.getElementById('debt-name').value.trim();
   if(!name){showToast('대출명을 입력해주세요','warn');return;}
@@ -2409,6 +3133,7 @@ async function saveDebtEntry(){
     balance:rawNum('debt-balance'),
     rate:Number(document.getElementById('debt-rate').value)||0,
     rateType:document.getElementById('debt-rate-type').value,
+    repayType:document.getElementById('debt-repay-type').value,
     monthly:rawNum('debt-monthly'),
     start:document.getElementById('debt-start').value,
     end:document.getElementById('debt-end').value,
@@ -2422,17 +3147,43 @@ function clearDebtForm(){
   document.getElementById('debt-balance').value='';
   document.getElementById('debt-rate').value='';
   document.getElementById('debt-monthly').value='';
+  document.getElementById('debt-repay-type').value='원리금균등';
+  const r=document.getElementById('debt-calc-result');
+  if(r) r.style.display='none';
 }
 function renderDebtLog(){
   const wrap=document.getElementById('debt-log-wrap'); if(!wrap)return;
   wrap.innerHTML=DB.debt.sort((a,b)=>b.balance-a.balance).map((r,i)=>`
     <div class="list-item" style="${i%2?'':'background:var(--gray-50)'}">
-      <div class="list-body"><div class="list-name">${r.name}</div><div class="list-sub">${r.type} · ${r.rate||0}% · ${r.rateType||''}</div></div>
-      <div class="list-right">
+      <div class="list-body">
+        <div class="list-name">${r.name}</div>
+        <div class="list-sub">${r.type} · ${r.rate||0}% · ${r.rateType||''}${r.monthly?' · 월'+fmtN(r.monthly)+'원':''}</div>
+      </div>
+      <div class="list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="list-amount neg">-${fmtN(r.balance)}</div>
-        <button onclick="deleteDebtEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;margin-top:4px">삭제</button>
+        <div style="display:flex;gap:4px">
+          <button onclick="editDebtEntry('${r.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:700">수정</button>
+          <button onclick="deleteDebtEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:700">삭제</button>
+        </div>
       </div>
     </div>`).join('')||'<div class="empty"><div class="empty-text">대출 없음</div></div>';
+}
+function editDebtEntry(id){
+  const r=DB.debt.find(d=>d.id===id); if(!r)return;
+  document.getElementById('debt-name').value=r.name||'';
+  document.getElementById('debt-company').value=r.company||'';
+  document.getElementById('debt-type').value=r.type||'주담대';
+  setComma('debt-balance',r.balance);
+  document.getElementById('debt-rate').value=r.rate||'';
+  document.getElementById('debt-rate-type').value=r.rateType||'고정';
+  document.getElementById('debt-repay-type').value=r.repayType||'원리금균등';
+  setComma('debt-monthly',r.monthly);
+  document.getElementById('debt-start').value=r.start||'';
+  document.getElementById('debt-end').value=r.end||'';
+  document.getElementById('debt-memo').value=r.memo||'';
+  calcDebtMonthly();
+  showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 async function deleteDebtEntry(id){ if(!confirm('삭제할까요?'))return; await gasDelete('debt',id); renderAll(); showToast('삭제 완료','error'); }
 
@@ -2458,14 +3209,37 @@ function clearRealForm(){
 }
 function renderRealLog(){
   const wrap=document.getElementById('real-log-wrap'); if(!wrap)return;
-  wrap.innerHTML=DB.real.sort((a,b)=>b.currPrice-a.currPrice).map((r,i)=>`
-    <div class="list-item" style="${i%2?'':'background:var(--gray-50)'}">
-      <div class="list-body"><div class="list-name">${r.name}</div><div class="list-sub">${r.type}${r.owner?' · '+r.owner:''}</div></div>
-      <div class="list-right">
-        <div class="list-amount">${fmtN(r.currPrice)}</div>
-        <button onclick="deleteRealEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;margin-top:4px">삭제</button>
+  wrap.innerHTML=DB.real.sort((a,b)=>b.currPrice-a.currPrice).map((r,i)=>{
+    const pnl=(r.currPrice||0)-(r.buyPrice||0);
+    const pnlTxt=(pnl>=0?'+':'')+fmtN(pnl);
+    return `<div class="list-item" style="${i%2?'':'background:var(--gray-50)'}">
+      <div class="list-body">
+        <div class="list-name">${r.name}</div>
+        <div class="list-sub">${r.type}${r.owner?' · '+r.owner:''} · 취득 ${fmtM(r.buyPrice)}</div>
+        <div style="font-size:11px;color:${pnl>=0?'var(--green)':'var(--red)'};margin-top:2px">평가손익 ${pnlTxt}원</div>
       </div>
-    </div>`).join('')||'<div class="empty"><div class="empty-text">실물자산 없음</div></div>';
+      <div class="list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div class="list-amount">${fmtN(r.currPrice)}</div>
+        <div style="display:flex;gap:4px">
+          <button onclick="editRealEntry('${r.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:700">수정</button>
+          <button onclick="deleteRealEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:700">삭제</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')||'<div class="empty"><div class="empty-text">실물자산 없음</div></div>';
+}
+function editRealEntry(id){
+  const r=DB.real.find(a=>a.id===id); if(!r)return;
+  document.getElementById('real-name').value=r.name||'';
+  document.getElementById('real-type').value=r.type||'아파트';
+  document.getElementById('real-owner').value=r.owner||'';
+  setComma('real-buy',r.buyPrice);
+  setComma('real-curr',r.currPrice);
+  document.getElementById('real-date').value=r.buyDate||'';
+  document.getElementById('real-month').value=r.month||'';
+  document.getElementById('real-memo').value=r.memo||'';
+  showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 async function deleteRealEntry(id){ if(!confirm('삭제할까요?'))return; await gasDelete('real',id); renderAll(); showToast('삭제 완료','error'); }
 
@@ -2897,7 +3671,7 @@ async function init(){
   }
 
   // 콤마 입력 바인딩
-  ['bank-balance','debt-balance','debt-monthly','real-buy','real-curr','cf-amount','inv-curr','fixed-amount']
+  ['bank-balance','debt-balance','debt-monthly','real-buy','real-curr','cf-amount','inv-curr','fixed-amount','tax-buy','tax-sell','tax-cost']
     .forEach(id=>bindComma(id, id==='inv-curr'?calcInvPreview:null));
 }
 
