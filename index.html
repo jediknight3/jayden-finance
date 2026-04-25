@@ -1020,12 +1020,62 @@ body {
 <div id="page-goals" class="page">
 <div class="page-inner">
   <div class="section" style="padding-top:16px;padding-left:20px;padding-right:20px">
+    <!-- 전체 달성률 -->
     <div class="card">
       <div class="card-header">
         <div class="card-header-title">전체 목표 달성률</div>
         <div class="card-header-value" id="goal-overall">—</div>
       </div>
     </div>
+
+    <!-- 목표 목록 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">🎯 목표 현황</div>
+      <button onclick="toggleGoalForm()" style="border:none;background:var(--primary);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">+ 목표 추가</button>
+    </div>
+
+    <!-- 목표 추가 폼 -->
+    <div id="goal-form" style="display:none;background:var(--card);border-radius:var(--radius-l);padding:16px;box-shadow:var(--shadow-s);margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px">🎯 새 목표 추가</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">목표명</label>
+          <input type="text" id="goal-name" class="form-input" placeholder="예: 비상금 1억 만들기">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">유형</label>
+            <select id="goal-type" class="form-input form-select">
+              <option value="저축목표">저축목표</option>
+              <option value="수익률">수익률</option>
+              <option value="자산목표">자산목표</option>
+              <option value="부채상환">부채상환</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">목표 금액/수치</label>
+            <input type="text" id="goal-target" class="form-input num" placeholder="0" inputmode="numeric">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">현재 금액/수치</label>
+            <input type="text" id="goal-current" class="form-input num" placeholder="0 (자동계산)" inputmode="numeric">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">목표 기한</label>
+            <input type="month" id="goal-date" class="form-input">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">메모</label>
+          <input type="text" id="goal-memo" class="form-input" placeholder="메모 (선택)">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="saveGoalEntry()" class="btn btn-primary" style="flex:1">💾 저장</button>
+          <button onclick="toggleGoalForm()" class="btn btn-ghost btn-sm">취소</button>
+        </div>
+      </div>
+    </div>
+
     <div id="goalsList"></div>
   </div>
 </div>
@@ -2773,6 +2823,42 @@ function drawBarChart(el, labels, income, expense){
 // ═══════════════════════════════════════════════════════════
 // 🎯 목표 렌더
 // ═══════════════════════════════════════════════════════════
+function toggleGoalForm(){
+  const f=document.getElementById('goal-form');
+  if(f) f.style.display=f.style.display==='none'?'block':'none';
+}
+
+async function saveGoalEntry(){
+  const name=document.getElementById('goal-name').value.trim();
+  if(!name){showToast('목표명을 입력해주세요','warn');return;}
+  const target=rawNum('goal-target');
+  if(!target){showToast('목표 금액을 입력해주세요','warn');return;}
+  const rec={
+    id:'goal_'+Date.now(),
+    name,
+    type:document.getElementById('goal-type').value,
+    targetAmount:target,
+    currentAmount:rawNum('goal-current')||0,
+    targetDate:document.getElementById('goal-date').value,
+    memo:document.getElementById('goal-memo').value,
+  };
+  await gasUpsert('goals',rec);
+  // 폼 초기화
+  ['goal-name','goal-memo','goal-date'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('goal-target').value='';
+  document.getElementById('goal-current').value='';
+  toggleGoalForm();
+  renderAll();
+  showToast('✅ 목표 저장 완료!','success');
+}
+
+async function deleteGoalEntry(id){
+  if(!confirm('이 목표를 삭제할까요?'))return;
+  await gasDelete('goals',id);
+  renderAll();
+  showToast('삭제 완료','error');
+}
+
 function renderGoals(){
   const nw=getNetWorth();
   const invT=getInvTotals();
@@ -2820,14 +2906,15 @@ function renderGoals(){
 let inputTab='invest';
 function setInputTab(t){
   inputTab=t;
-  ['invest','bank','debt','real','cf','fixed'].forEach(k=>{
+  ['invest','bank','debt','install','real','cf','fixed'].forEach(k=>{
     const el=document.getElementById('inp-'+k);
     if(el) el.style.display=k===t?'block':'none';
   });
   document.querySelectorAll('#page-input .seg-tab').forEach((el,i)=>{
-    el.classList.toggle('active',['invest','bank','debt','real','cf','fixed'][i]===t);
+    el.classList.toggle('active',['invest','bank','debt','install','real','cf','fixed'][i]===t);
   });
   if(t==='fixed') renderFixedInpList();
+  if(t==='install') renderInstallLog();
 }
 function renderInputPage(){
   renderInvLog();
