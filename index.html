@@ -1504,26 +1504,52 @@ body {
           <input type="number" class="form-input" id="inst-rate" placeholder="0 (무이자)" min="0" step="0.1" oninput="calcInstallment()">
         </div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">상환 방식</label>
+          <select class="form-input form-select" id="inst-repay" onchange="calcInstallment()">
+            <option value="원리금균등">원리금균등 (매월 동일)</option>
+            <option value="원금균등">원금균등 (초기 납입 많음)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">납부일</label>
+          <select class="form-input form-select" id="inst-day">
+            <option value="0">매월 자동</option>
+            <option value="5">5일</option><option value="10">10일</option>
+            <option value="15">15일</option><option value="20">20일</option>
+            <option value="25">25일</option><option value="말일">말일</option>
+          </select>
+        </div>
+      </div>
 
       <!-- 자동계산 결과 -->
       <div id="inst-calc" style="display:none;background:var(--primary-l);border-radius:12px;padding:14px;margin-bottom:4px">
-        <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">📊 할부 계산</div>
+        <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">📊 할부 계산 결과</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center;grid-column:1/-1">
             <div style="font-size:10px;color:var(--sub);margin-bottom:3px">월 납입액</div>
-            <div id="ic-monthly" style="font-size:15px;font-weight:800;color:var(--text)">—</div>
+            <div id="ic-monthly" style="font-size:20px;font-weight:900;color:var(--text)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">이자</div>
+            <div id="ic-interest" style="font-size:13px;font-weight:700;color:var(--red)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">원금</div>
+            <div id="ic-principal" style="font-size:13px;font-weight:700;color:var(--green)">—</div>
           </div>
           <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
             <div style="font-size:10px;color:var(--sub);margin-bottom:3px">잔여 횟수</div>
-            <div id="ic-remain" style="font-size:15px;font-weight:800;color:var(--primary)">—</div>
+            <div id="ic-remain" style="font-size:13px;font-weight:700;color:var(--primary)">—</div>
           </div>
           <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
             <div style="font-size:10px;color:var(--sub);margin-bottom:3px">잔여 금액</div>
-            <div id="ic-remain-amt" style="font-size:15px;font-weight:800;color:var(--red)">—</div>
+            <div id="ic-remain-amt" style="font-size:13px;font-weight:700;color:var(--red)">—</div>
           </div>
-          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center;grid-column:1/-1">
             <div style="font-size:10px;color:var(--sub);margin-bottom:3px">완료 예정</div>
-            <div id="ic-end" style="font-size:15px;font-weight:800;color:var(--green)">—</div>
+            <div id="ic-end" style="font-size:13px;font-weight:700;color:var(--green)">—</div>
           </div>
         </div>
       </div>
@@ -2409,6 +2435,12 @@ function calcTransferTax(){
 
   contentEl.innerHTML=buildResult({gain,taxableGain,taxBase,ltcRate,ltcDeduct,basicDeduct,tax,localTax,totalTax,holdYears,holdMonths,liveYears,sellPrice,buyPrice,cost,taxFreeNote,taxRate,houses,isAdj});
   resultEl.style.display='block';
+  // 선택된 자산에 양도세 결과 저장
+  const assetName=document.getElementById('tax-asset').value;
+  if(assetName){
+    window._taxResults=window._taxResults||{};
+    window._taxResults[assetName]={tax:Math.max(0,totalTax),netAmt:Math.max(0,sellPrice-totalTax),sellPrice};
+  }
 }
 
 function getBasicTaxRate(taxBase){
@@ -2479,12 +2511,18 @@ function renderRealAssets(){
   const totalBuy=items.reduce((s,r)=>s+(r.buyPrice||0),0);
   const totalGain=total-totalBuy;
 
-  // 양도세 추정 (보유 2주택 기준 간단 추정)
+  // 양도세: 계산기 결과 우선, 없으면 간단 추정 (33%)
   let estTax=0;
-  items.filter(r=>r.type==='아파트'||r.type==='주택').forEach(r=>{
-    const g=(r.currPrice||0)-(r.buyPrice||0);
-    if(g>0) estTax+=g*0.33; // 대략 33% 추정
+  const taxResults=window._taxResults||{};
+  items.forEach(r=>{
+    if(taxResults[r.name]){
+      estTax+=taxResults[r.name].tax;
+    } else if(r.type==='아파트'||r.type==='주택'||r.type==='분양권'){
+      const g=(r.currPrice||0)-(r.buyPrice||0);
+      if(g>0) estTax+=g*0.33;
+    }
   });
+  const hasTaxCalc=Object.keys(taxResults).length>0;
 
   document.getElementById('at-real-total').textContent=fmtM(total);
   const buyEl=document.getElementById('at-real-buy');
@@ -2493,8 +2531,8 @@ function renderRealAssets(){
   const netEl=document.getElementById('at-real-net');
   if(buyEl) buyEl.textContent=fmtN(totalBuy);
   if(gainEl){ gainEl.textContent=(totalGain>=0?'+':'')+fmtN(totalGain); gainEl.className='summary-value '+(totalGain>=0?'pos':'neg'); }
-  if(taxEl) taxEl.textContent='≈-'+fmtN(estTax);
-  if(netEl) netEl.textContent=fmtN(total-estTax);
+  if(taxEl){ taxEl.textContent=(hasTaxCalc?'':' ≈')+'-'+fmtN(Math.round(estTax)); }
+  if(netEl) netEl.textContent=fmtN(total-Math.round(estTax));
   const typeIcon={'아파트':'🏢','주택':'🏠','분양권':'📋','토지':'🌱','상가':'🏪','자동차':'🚗','기타':'📦'};
   document.getElementById('realListCard').innerHTML = items.map(r=>{
     const pnl=(r.currPrice||0)-(r.buyPrice||0);
@@ -2546,17 +2584,48 @@ function calcInstallment(){
   const months=Number(document.getElementById('inst-months').value)||0;
   const rate=Number(document.getElementById('inst-rate').value)||0;
   const start=document.getElementById('inst-start').value;
+  const repayEl=document.getElementById('inst-repay');
+  const repay=repayEl?repayEl.value:'원리금균등';
   const calcEl=document.getElementById('inst-calc');
   if(!total||!months){if(calcEl)calcEl.style.display='none';return;}
+
   const mr=rate/100/12;
-  const monthly=rate===0?Math.round(total/months):Math.round(total*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1));
+  let monthly=0, firstInterest=0, firstPrincipal=0;
+
+  if(rate===0){
+    // 무이자
+    monthly=Math.round(total/months);
+    firstInterest=0;
+    firstPrincipal=monthly;
+  } else if(repay==='원리금균등'){
+    // 원리금균등 (PMT)
+    monthly=Math.round(total*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1));
+    firstInterest=Math.round(total*mr);
+    firstPrincipal=monthly-firstInterest;
+  } else {
+    // 원금균등: 첫달 기준
+    firstPrincipal=Math.round(total/months);
+    firstInterest=Math.round(total*mr);
+    monthly=firstPrincipal+firstInterest;
+  }
+
   const remain=start?getInstallRemain({start,months}):months;
   const remainAmt=monthly*remain;
   let endDate='—';
   if(start){const s=new Date(start+'-01');s.setMonth(s.getMonth()+months-1);endDate=s.getFullYear()+'년 '+(s.getMonth()+1)+'월';}
+
   const e=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  e('ic-monthly',fmtN(monthly)+'원');e('ic-remain',remain+'회');
-  e('ic-remain-amt',fmtN(remainAmt)+'원');e('ic-end',endDate);
+  e('ic-monthly',fmtN(monthly)+'원'+(repay==='원금균등'?' (첫달)':''));
+  e('ic-remain',remain+'회');
+  e('ic-remain-amt',fmtN(remainAmt)+'원');
+  e('ic-end',endDate);
+
+  // 이자/원금 분리 표시 업데이트
+  const ici=document.getElementById('ic-interest');
+  const icp=document.getElementById('ic-principal');
+  if(ici) ici.textContent=rate>0?fmtN(firstInterest)+'원 (이자)':'무이자';
+  if(icp) icp.textContent=fmtN(firstPrincipal)+'원 (원금)';
+
   if(calcEl)calcEl.style.display='block';
 }
 
@@ -2572,10 +2641,15 @@ async function saveInstallEntry(){
   const monthly=rate===0?Math.round(total/months):Math.round(total*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1));
   const s2=new Date(start+'-01');s2.setMonth(s2.getMonth()+months-1);
   const endDate=s2.getFullYear()+'-'+String(s2.getMonth()+1).padStart(2,'0');
+  const repayEl2=document.getElementById('inst-repay');
+  const dayEl=document.getElementById('inst-day');
   const id='inst_'+Date.now();
   const rec={id,name,cat:document.getElementById('inst-cat').value,
     company:document.getElementById('inst-company').value,
-    totalAmt:total,months,monthly,rate,start,end:endDate,
+    totalAmt:total,months,monthly,rate,
+    repayType:repayEl2?repayEl2.value:'원리금균등',
+    day:dayEl?dayEl.value:'0',
+    start,end:endDate,
     remainMonths:getInstallRemain({start,months}),status:'진행중',
     memo:document.getElementById('inst-memo').value};
   await gasUpsert('install',rec);
@@ -2595,6 +2669,7 @@ async function saveInstallEntry(){
 function clearInstallForm(){
   ['inst-name','inst-company','inst-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['inst-total','inst-months','inst-rate','inst-start'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const ir=document.getElementById('inst-repay');if(ir)ir.value='원리금균등';
   const c=document.getElementById('inst-calc');if(c)c.style.display='none';
 }
 
@@ -3758,7 +3833,8 @@ async function init(){
   }
 
   // 콤마 입력 바인딩
-  ['bank-balance','debt-balance','debt-monthly','real-buy','real-curr','cf-amount','inv-curr','fixed-amount','tax-buy','tax-sell','tax-cost']
+  ['bank-balance','debt-balance','debt-monthly','real-buy','real-curr','cf-amount','inv-curr',
+   'fixed-amount','tax-buy','tax-sell','tax-cost','inst-total','goal-target','goal-current']
     .forEach(id=>bindComma(id, id==='inv-curr'?calcInvPreview:null));
 }
 
