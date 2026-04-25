@@ -277,8 +277,9 @@ body {
 .btn-row { display: flex; gap: 8px; margin-top: 16px; }
 
 /* ── 탭 세그먼트 ── */
-.seg-tabs { display: flex; background: var(--gray-100); border-radius: var(--radius-m); padding: 3px; margin-bottom: 16px; }
-.seg-tab { flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 600; color: var(--gray-500); border-radius: 9px; cursor: pointer; transition: all .15s; }
+.seg-tabs { display: flex; background: var(--gray-100); border-radius: var(--radius-m); padding: 3px; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap; }
+.seg-tabs::-webkit-scrollbar { display: none; }
+.seg-tab { flex: 0 0 auto; padding: 7px 10px; text-align: center; font-size: 12px; font-weight: 600; color: var(--gray-500); border-radius: 9px; cursor: pointer; transition: all .15s; white-space: nowrap; }
 .seg-tab.active { background: var(--white); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
 
 /* ── 토스트 ── */
@@ -609,7 +610,7 @@ body {
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <button class="seg-tab active" id="btn-net" onclick="setNetMode('net')" style="flex:1;padding:7px;font-size:12px">순자산</button>
         <button class="seg-tab" id="btn-asset" onclick="setNetMode('asset')" style="flex:1;padding:7px;font-size:12px">총자산</button>
-        <button class="seg-tab" id="btn-inv-r" onclick="setNetMode('inv')" style="flex:1;padding:7px;font-size:12px">투자수익률</button>
+        <button class="seg-tab" id="btn-inv-r" onclick="setNetMode('inv-r')" style="flex:1;padding:7px;font-size:12px">투자수익률</button>
       </div>
       <div id="homeChart"></div>
     </div>
@@ -1093,10 +1094,10 @@ body {
       <div class="seg-tab active" onclick="setInputTab('invest')">투자</div>
       <div class="seg-tab" onclick="setInputTab('bank')">계좌</div>
       <div class="seg-tab" onclick="setInputTab('debt')">부채</div>
-      <div class="seg-tab" onclick="setInputTab('install')">💳 할부</div>
+      <div class="seg-tab" onclick="setInputTab('install')">💳할부</div>
       <div class="seg-tab" onclick="setInputTab('real')">실물</div>
-      <div class="seg-tab" onclick="setInputTab('cf')">현금흐름</div>
-      <div class="seg-tab" onclick="setInputTab('fixed')">🔒 고정</div>
+      <div class="seg-tab" onclick="setInputTab('cf')">현금</div>
+      <div class="seg-tab" onclick="setInputTab('fixed')">🔒고정</div>
     </div>
   </div>
 
@@ -2220,9 +2221,16 @@ function renderHomeChart(){
   });
 
   const isRate=homeChartMode==='inv-r';
-  const data=vals.map(v=>isRate?v.rate*100:homeChartMode==='net'?v.curr:v.curr);
-  const color=homeChartMode==='inv-r'?(data[data.length-1]>=0?'#05C072':'#F04452'):'#3182F6';
-  drawLineChart(el,months,data,color,isRate?'%':'억',isRate?null:0);
+  // 순자산=총투자자산, 총자산=순자산(자산-부채 개념으로 차후 확장), 수익률=%
+  const data=vals.map(v=>{
+    if(isRate) return v.rate*100;
+    if(homeChartMode==='net') return v.curr;  // 총 투자자산
+    return v.curr;  // asset도 동일(향후 부채차감 가능)
+  });
+  const lastVal=data[data.length-1];
+  const color=isRate?(lastVal>=0?'#05C072':'#F04452'):'#3182F6';
+  // 수익률: zeroLine=0 표시, 자산: 0 기준 없이 데이터 범위로
+  drawLineChart(el,months,data,color,isRate?'%':'억',isRate?0:null);
 }
 
 function drawLineChart(el, labels, data, color, unit, baseline){
