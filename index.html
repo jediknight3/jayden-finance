@@ -2737,7 +2737,8 @@ function renderInstallList(){
         <span>완료: ${r.end?r.end.slice(0,7).replace('-','년 ')+'월':'—'}</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="applySingleInstallToCf('${r.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">💳 이번달 반영</button>
+        <button onclick="editInstallEntry('${r.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">✏️ 수정</button>
+        <button onclick="applySingleInstallToCf('${r.id}')" style="border:none;background:#EBF8F1;color:var(--green);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">💳 반영</button>
         <button onclick="completeInstall('${r.id}')" style="border:none;background:var(--green-l);color:var(--green);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">✅ 완료</button>
         <button onclick="deleteInstallEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">🗑</button>
       </div>
@@ -2782,6 +2783,29 @@ async function applySingleInstallToCf(id){
   const mo=NOWMO2();
   await gasUpsert('cf',{id:mo+'_inst_'+id,month:mo,inout:'지출',category:'기타',amount:r.monthly,memo:'[할부]'+r.name});
   showToast('✅ 현금흐름 반영!','success');renderAll();
+}
+
+function editInstallEntry(id){
+  const r=(DB.install||[]).find(i=>i.id===id); if(!r)return;
+  setInputTab('install');
+  goPage('input');
+  document.getElementById('inst-name').value=r.name||'';
+  document.getElementById('inst-cat').value=r.cat||'카드할부';
+  document.getElementById('inst-company').value=r.company||'';
+  setComma('inst-total',r.totalAmt);
+  document.getElementById('inst-months').value=r.months||'';
+  document.getElementById('inst-rate').value=r.rate||0;
+  document.getElementById('inst-start').value=r.start||'';
+  const repayEl=document.getElementById('inst-repay');
+  if(repayEl) repayEl.value=r.repayType||'원리금균등';
+  const dayEl=document.getElementById('inst-day');
+  if(dayEl) dayEl.value=r.day||'0';
+  document.getElementById('inst-memo').value=r.memo||'';
+  // 기존 항목 제거 (수정 후 재저장)
+  DB.install=(DB.install||[]).filter(i=>i.id!==id);
+  saveCache();
+  calcInstallment();
+  showToast('📂 할부 데이터 불러옴 — 수정 후 저장','success');
 }
 
 async function completeInstall(id){
@@ -2956,6 +2980,26 @@ async function saveGoalEntry(){
   showToast('✅ 목표 저장 완료!','success');
 }
 
+function editGoalEntry(id){
+  const r=(DB.goals||[]).find(g=>g.id===id); if(!r)return;
+  // 목표 폼 열기
+  const form=document.getElementById('goal-form');
+  if(form) form.style.display='block';
+  document.getElementById('goal-name').value=r.name||'';
+  document.getElementById('goal-type').value=r.type||'저축목표';
+  setComma('goal-target',r.targetAmount);
+  setComma('goal-current',r.currentAmount);
+  document.getElementById('goal-date').value=r.targetDate||'';
+  document.getElementById('goal-memo').value=r.memo||'';
+  // 기존 항목 제거 (수정 후 재저장)
+  DB.goals=(DB.goals||[]).filter(g=>g.id!==id);
+  saveCache();
+  // 목표 페이지로 이동
+  goPage('goals');
+  window.scrollTo({top:0,behavior:'smooth'});
+  showToast('📂 목표 불러옴 — 수정 후 저장','success');
+}
+
 async function deleteGoalEntry(id){
   if(!confirm('이 목표를 삭제할까요?'))return;
   await gasDelete('goals',id);
@@ -2985,6 +3029,7 @@ function renderGoals(){
     const pct=g.target?Math.min(g.current/g.target*100,100):0;
     const isRate=g.type==='수익률';
     const cur=isRate?g.current.toFixed(1)+'%':fmtM(g.current);
+    const isAuto=!g.id; // 자동 목표는 수정/삭제 불가
     const tgt=isRate?g.target+'%':fmtM(g.target);
     const col=pct>=100?'var(--green)':pct>=50?'var(--primary)':'var(--orange)';
     return `<div class="goal-card">
@@ -3000,6 +3045,10 @@ function renderGoals(){
         <span>현재 ${cur}</span>
         <span>목표 ${tgt}${g.date?' · '+fmtMo(g.date):''}</span>
       </div>
+      ${!isAuto?`<div style="display:flex;gap:6px;margin-top:10px">
+        <button onclick="editGoalEntry('${g.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">✏️ 수정</button>
+        <button onclick="deleteGoalEntry('${g.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🗑 삭제</button>
+      </div>`:''}
     </div>`;
   }).join('');
 }
@@ -3848,7 +3897,7 @@ async function init(){
   if(GAS_URL){
     setLoading(true,'최신 데이터 불러오는 중...');
     try{
-      const sheets=['invest','bank','debt','real','cf','goals','fixed'];
+      const sheets=['invest','bank','debt','real','cf','goals','fixed','install'];
       let updated=false;
       for(const s of sheets){
         const r=await gasReq({sheet:s});
@@ -4023,6 +4072,8 @@ function renderInvSummary(){
   // 계좌 목록 테이블
   const tb = document.getElementById('investListCard');
   if(tb){
+    tb.style.overflowX='auto';
+    tb.style.webkitOverflowScrolling='touch';
     tb.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:420px">
       <thead><tr style="background:#1A2B4A">
         <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px">계좌명</th>
