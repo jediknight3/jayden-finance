@@ -1799,6 +1799,7 @@ const SHEETS = {
   cf:     '현금흐름데이터',
   goals:  '목표데이터',
   fixed:  '고정지출데이터',
+  install:'할부데이터',
 };
 
 function getSheet(name) {
@@ -1923,6 +1924,7 @@ function getHeaders(sheetKey) {
     cf:     ['id','month','inout','category','amount','memo'],
     goals:  ['id','name','type','targetAmount','currentAmount','targetDate','memo'],
     fixed:  ['id','name','cat','amount','day','status','start','end','autoApply','memo'],
+    install:['id','name','cat','company','totalAmt','months','monthly','rate','repayType','day','start','end','remainMonths','status','memo'],
   };
   return map[sheetKey] || ['id','data'];
 }
