@@ -4612,108 +4612,27 @@ function calcFinanceIncome(){
 async function genAIReport(type){
   const loadEl=document.getElementById('ai-report-loading');
   const contentEl=document.getElementById('ai-report-content');
-  if(!loadEl||!contentEl)return;
-
-  loadEl.style.display='block';
-  contentEl.textContent='';
-
-  const inv=getInvTotals();
-  const nw=getNetWorth();
-  const mos=getMonthlyTotals2();
-  const last=mos.length?mos[mos.length-1]:null;
-  const prev=mos.length>1?mos[mos.length-2]:null;
-
-  const prompts={
-    monthly:`당신은 재무 분석 전문가입니다. 다음 투자 데이터를 분석해서 한국어로 이번달 재무 리포트를 작성해주세요.
-
-【이번달 현황】
-- 총 투자자산: ${fmtN(inv.curr)}원
-- 투자수익률: ${fmtP(inv.rate)}
-- 총 손익: ${fmtN(inv.pnl)}원
-- 순자산: ${fmtN(nw.total)}원
-${last&&prev?`- 전월 대비 자산 변화: ${fmtN(last.curr-prev.curr)}원`:''}
-
-【계좌별 현황】
-${getAllInvLatest().slice(0,6).map(a=>`- ${a.acct}: ${fmtN(a.curr)}원 (${fmtP(a.rate)})`).join('\n')}
-
-다음 형식으로 작성해주세요:
-1. 이번달 성과 요약 (3줄)
-2. 잘된 점 (2가지)
-3. 개선이 필요한 점 (2가지)
-4. 다음달 권장 액션 (3가지)`,
-
-    annual:`재무 분석 전문가로서 다음 연간 투자 데이터를 분석해주세요.
-
-【연간 투자 추이】
-${mos.slice(-12).map(m=>`${fmtMo(m.month)}: 자산 ${fmtM(m.curr)}, 수익률 ${fmtP(m.rate)}`).join('\n')}
-
-【현재 포트폴리오】
-- 총 투자자산: ${fmtM(inv.curr)}
-- 총 수익률: ${fmtP(inv.rate)}
-- 총 손익: ${fmtM(inv.pnl)}
-
-연간 성과 분석, 수익률 추이, 개선 방향을 한국어로 작성해주세요.`,
-
-    invest:`투자 전문가로서 다음 포트폴리오를 분석해주세요.
-
-【계좌별 수익률】
-${getAllInvLatest().map(a=>`- ${a.acct}: ${fmtN(a.curr)}원, 수익률 ${fmtP(a.rate)}, 손익 ${fmtN(a.pnl)}원`).join('\n')}
-
-- 총 투자원금: ${fmtM(inv.prin)}
-- 총 현재자산: ${fmtM(inv.curr)}
-- 총 수익률: ${fmtP(inv.rate)}
-
-포트폴리오 분석, 리스크 평가, 자산 배분 개선 방향을 한국어로 작성해주세요.`,
-
-    advice:`재무 설계사로서 다음 재무 현황을 바탕으로 맞춤형 조언을 해주세요.
-
-【재무 현황】
-- 순자산: ${fmtM(nw.total)}
-- 총 투자자산: ${fmtM(inv.curr)}, 수익률 ${fmtP(inv.rate)}
-- 총 부채: ${fmtM(nw.debt)}
-- 부채비율: ${nw.total>0?(nw.debt/nw.total*100).toFixed(1):'0'}%
-- 목표: 2029년 3월까지 8.5억 달성 (상봉동 더샵 입주)
-- 현재 달성률: ${(nw.total/850000000*100).toFixed(1)}%
-
-구체적이고 실행 가능한 재무 조언을 한국어로 3~5가지 제공해주세요.`
-  };
-
+  if(!loadEl||!contentEl) return;
   if(!GAS_URL){
-    contentEl.textContent = '⚠️ 설정 탭에서 Google Apps Script URL을 먼저 입력해주세요.';
-    loadEl.style.display='none';
+    contentEl.textContent='⚠️ 설정 탭에서 Google Apps Script URL을 먼저 입력해주세요.';
     return;
   }
+
+  loadEl.style.display='block';
+  contentEl.innerHTML='';
+
   try{
-    // GAS를 프록시로 사용하여 CORS 우회 (프롬프트 인코딩)
-    // 프롬프트를 GAS로 POST (GET URL 길이 한계 우회)
-    const res = await new Promise((resolve, reject)=>{
-      const xhr = new XMLHttpRequest();
-      // GAS는 GET만 지원하므로 프롬프트를 청크로 나눠 전송
-      // 대신 type과 핵심 수치만 전달하고 GAS에서 AI 프롬프트 생성
-      const prompt = prompts[type];
-      // URL 안전 인코딩 (긴 프롬프트는 청크 분할)
-      const MAX = 2000;
-      if(prompt.length <= MAX){
-        const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
-        xhr.open('GET', url);
-        xhr.onload=()=>{ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject(e); } };
-        xhr.onerror=()=>reject(new Error('네트워크 오류'));
-        xhr.send();
-      } else {
-        // 프롬프트가 길면 핵심 수치만 추출해서 전송
-        const shortPrompt = buildShortPrompt(type);
-        const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(shortPrompt);
-        xhr.open('GET', url);
-        xhr.onload=()=>{ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject(e); } };
-        xhr.onerror=()=>reject(new Error('네트워크 오류'));
-        xhr.send();
-      }
-    });
+    // buildShortPrompt로 압축된 프롬프트 생성
+    const prompt = buildShortPrompt(type);
+
+    // fetch로 GAS 호출 (no-cors 우회를 위해 mode 생략)
+    const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
+    const res = await fetch(url).then(r=>r.json());
+
     if(res.ok && res.text){
-      // 마크다운 스타일 렌더링
       contentEl.innerHTML = renderMarkdown(res.text);
     } else {
-      contentEl.textContent = '⚠️ 분석 실패: '+(res.error||'알 수 없는 오류')+'\n\nApps Script 코드가 최신 버전인지 확인해주세요.';
+      contentEl.textContent = '⚠️ 분석 실패: '+(res.error||'알 수 없는 오류')+'\n\nApps Script 코드가 최신 버전인지, ANTHROPIC_API_KEY가 설정됐는지 확인해주세요.';
     }
   }catch(e){
     contentEl.textContent = '⚠️ AI 리포트 생성 실패: '+e.message+'\n\nApps Script URL과 네트워크를 확인해주세요.';
@@ -4721,6 +4640,7 @@ ${getAllInvLatest().map(a=>`- ${a.acct}: ${fmtN(a.curr)}원, 수익률 ${fmtP(a.
     loadEl.style.display='none';
   }
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // 초기화
