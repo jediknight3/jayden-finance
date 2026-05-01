@@ -1689,6 +1689,172 @@ body {
 </div><!-- /page-inner -->
 </div><!-- /page-input -->
 
+<!-- ═══════════════════════════════════
+     🔬 분석
+     ═══════════════════════════════════ -->
+<div id="page-analysis" class="page">
+<div class="page-inner">
+  <div class="section" style="padding-top:16px;padding-bottom:0">
+    <div class="seg-tabs">
+      <div class="seg-tab active" onclick="setAnalysisTab('wealth')">💰 순자산</div>
+      <div class="seg-tab" onclick="setAnalysisTab('goal')">🎯 목표</div>
+      <div class="seg-tab" onclick="setAnalysisTab('debt')">🏦 대출</div>
+      <div class="seg-tab" onclick="setAnalysisTab('tax')">💸 세금</div>
+      <div class="seg-tab" onclick="setAnalysisTab('ai')">🤖 AI</div>
+    </div>
+  </div>
+
+  <!-- 순자산 분석 -->
+  <div id="an-wealth">
+    <div class="section">
+      <div class="card" id="an-wealth-summary"></div>
+      <div class="chart-card">
+        <div class="chart-title">📊 순자산 증감 원인 분해</div>
+        <div id="an-wealth-breakdown"></div>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">월별 재무 성과</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);margin-bottom:16px">
+        <table style="width:100%;border-collapse:collapse;min-width:500px">
+          <thead><tr style="background:#1A2B4A">
+            <th style="padding:10px 12px;font-size:10px;color:rgba(255,255,255,.8);text-align:left">년/월</th>
+            <th style="padding:10px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">투자수익</th>
+            <th style="padding:10px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">순저축</th>
+            <th style="padding:10px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">순자산증감</th>
+            <th style="padding:10px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익기여도</th>
+          </tr></thead>
+          <tbody id="an-wealth-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 목표 시뮬레이션 -->
+  <div id="an-goal" style="display:none">
+    <div class="section">
+      <div class="card">
+        <div style="padding:16px 20px 8px;font-size:14px;font-weight:700">🎯 목표 달성 시뮬레이션</div>
+        <div style="padding:0 20px 16px">
+          <div id="an-goal-main"></div>
+          <div style="background:var(--gray-50);border-radius:10px;padding:14px;margin-top:12px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px">📋 시나리오 설정</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">월 추가 저축 (원)</label>
+                <input type="text" id="sim-monthly-save" class="form-input num" placeholder="0" oninput="runGoalSim()"></div>
+              <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">예상 연 수익률 (%)</label>
+                <input type="number" id="sim-annual-rate" class="form-input" placeholder="10" value="10" step="1" oninput="runGoalSim()"></div>
+              <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">목표금액 (억)</label>
+                <input type="number" id="sim-target" class="form-input" placeholder="8.5" value="8.5" step="0.1" oninput="runGoalSim()"></div>
+              <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">목표일</label>
+                <input type="month" id="sim-target-date" class="form-input" value="2029-03" onchange="runGoalSim()"></div>
+            </div>
+          </div>
+          <div id="an-goal-result" style="margin-top:12px"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📈 시나리오별 자산 성장 예측</div>
+        <div id="an-goal-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 대출 분석 -->
+  <div id="an-debt" style="display:none">
+    <div class="section">
+      <div class="card" id="an-debt-summary"></div>
+      <div class="chart-card">
+        <div class="chart-title">🔧 대출 상환 시뮬레이터</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">대출 선택</label>
+            <select id="sim-debt-sel" class="form-input form-select" onchange="runDebtSim()"><option value="">— 대출 선택 —</option></select></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">현재 금리 (%)</label>
+              <input type="number" id="sim-debt-rate" class="form-input" step="0.1" oninput="runDebtSim()"></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">새 금리 (%)</label>
+              <input type="number" id="sim-debt-new-rate" class="form-input" placeholder="3.5" step="0.1" oninput="runDebtSim()"></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">잔여 기간 (개월)</label>
+              <input type="number" id="sim-debt-months" class="form-input" oninput="runDebtSim()"></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">추가 상환 (원/월)</label>
+              <input type="text" id="sim-debt-extra" class="form-input num" placeholder="0" oninput="runDebtSim()"></div>
+          </div>
+        </div>
+        <div id="an-debt-sim-result" style="margin-top:14px"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📉 부채비율 추이</div>
+        <div id="an-debt-ratio-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 세금 시뮬레이터 -->
+  <div id="an-tax" style="display:none">
+    <div class="section">
+      <div class="card">
+        <div style="padding:16px 20px 8px;font-size:14px;font-weight:700">🏥 건강보험료 예상 (2024년 기준)</div>
+        <div style="padding:0 20px 16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">가입 유형</label>
+              <select id="hi-type" class="form-input form-select" onchange="calcHealthInsurance()">
+                <option value="직장">직장가입자</option>
+                <option value="지역">지역가입자</option>
+              </select></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">월 보수 (원)</label>
+              <input type="text" id="hi-salary" class="form-input num" placeholder="0" oninput="calcHealthInsurance()"></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">금융소득 (연, 원)</label>
+              <input type="text" id="hi-finance-income" class="form-input num" placeholder="0" oninput="calcHealthInsurance()"></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">재산 과표 (원)</label>
+              <input type="text" id="hi-property" class="form-input num" placeholder="0" oninput="calcHealthInsurance()"></div>
+          </div>
+          <div id="hi-result"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="padding:16px 20px 8px;font-size:14px;font-weight:700">💰 금융소득 종합과세</div>
+        <div style="padding:0 20px 16px">
+          <div style="background:var(--primary-l);border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px;color:var(--primary)">금융소득(이자+배당) 연 2,000만원 초과 시 종합과세 대상입니다</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">연 이자소득 (원)</label>
+              <input type="text" id="fi-interest" class="form-input num" placeholder="0" oninput="calcFinanceIncome()"></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">연 배당소득 (원)</label>
+              <input type="text" id="fi-dividend" class="form-input num" placeholder="0" oninput="calcFinanceIncome()"></div>
+            <div><label style="font-size:11px;color:var(--sub);display:block;margin-bottom:4px">다른 종합소득 (원)</label>
+              <input type="text" id="fi-other" class="form-input num" placeholder="0" oninput="calcFinanceIncome()"></div>
+          </div>
+          <div id="fi-result"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 리포트 -->
+  <div id="an-ai" style="display:none">
+    <div class="section">
+      <div class="card">
+        <div style="padding:16px 20px 8px;font-size:14px;font-weight:700">🤖 AI 재무 분석 리포트</div>
+        <div style="padding:0 20px 16px">
+          <div style="background:var(--primary-l);border-radius:10px;padding:12px;margin-bottom:12px;font-size:11px;color:var(--primary);line-height:1.6">
+            Claude AI가 재훈님의 투자 데이터를 분석하여 맞춤형 재무 인사이트를 제공합니다.<br>⚠️ 참고용이며 투자 결정의 근거로 사용하지 마세요.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <button onclick="genAIReport('monthly')" class="btn btn-primary">📊 이번달 리포트</button>
+            <button onclick="genAIReport('annual')" class="btn btn-ghost">📅 연간 분석</button>
+            <button onclick="genAIReport('invest')" class="btn btn-ghost">💹 투자 성과</button>
+            <button onclick="genAIReport('advice')" class="btn btn-ghost">💡 재무 조언</button>
+          </div>
+          <div id="ai-report-loading" style="display:none;text-align:center;padding:30px">
+            <div style="font-size:28px;margin-bottom:8px">🤖</div>
+            <div style="font-size:13px;color:var(--sub)">AI가 분석 중입니다...</div>
+          </div>
+          <div id="ai-report-content" style="font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-inner -->
+</div><!-- /page-analysis -->
+
 <!-- ⚙️ 설정 (숨김 페이지) -->
 <div id="page-settings" class="page">
 <div class="page-inner">
@@ -1765,6 +1931,10 @@ body {
   <div class="nav-item" onclick="goPage('input')" id="nav-input">
     <div class="nav-icon">✏️</div>
     <div class="nav-label">입력</div>
+  </div>
+  <div class="nav-item" onclick="goPage('analysis')" id="nav-analysis">
+    <div class="nav-icon">🔬</div>
+    <div class="nav-label">분석</div>
   </div>
   <div class="nav-item" onclick="goPage('settings')" id="nav-settings">
     <div class="nav-icon">⚙️</div>
@@ -2110,6 +2280,7 @@ function renderPage(id){
   if(id==='goals')     renderGoals();
   if(id==='input')     renderInputPage();
   if(id==='settings')  renderSettings();
+  if(id==='analysis')  renderAnalysis();
 }
 function renderAll(){ renderPage(curPage); requestAnimationFrame(applyLayout); }
 
@@ -3892,6 +4063,557 @@ function renderFixedInpList(){
 }
 
 // 고정지출은 getCfForMonth와 별도로 getFixedTotal()로 직접 조회
+
+
+// ══════════════════════════════════════════════════════
+// 🔬 분석 페이지
+// ══════════════════════════════════════════════════════
+let analysisTab = 'wealth';
+let wealthChartMode = 'bar';
+
+function getAllInvLatest(){
+  const latestMap={};
+  DB.invest.forEach(r=>{
+    if(!latestMap[r.acct]||r.month>latestMap[r.acct].month) latestMap[r.acct]=r;
+  });
+  return Object.values(latestMap).map(r=>{
+    const depCum=Number(r.depCum)||0, wdCum=Number(r.wdCum)||0, curr=Number(r.curr)||0;
+    const prin=depCum-wdCum;
+    const pnl=curr-prin;
+    const rate=prin>0?pnl/prin:0;
+    return {...r,prin,pnl,rate};
+  }).sort((a,b)=>b.curr-a.curr);
+}
+
+function setAnalysisTab(t){
+  analysisTab = t;
+  ['wealth','goal','debt','tax','ai'].forEach(k=>{
+    const el=document.getElementById('an-'+k);
+    if(el) el.style.display = k===t ? 'block' : 'none';
+  });
+  document.querySelectorAll('#page-analysis .seg-tab').forEach((el,i)=>{
+    el.classList.toggle('active', ['wealth','goal','debt','tax','ai'][i]===t);
+  });
+  renderAnalysis();
+}
+
+function renderAnalysis(){
+  if(analysisTab==='wealth') renderWealthAnalysis();
+  if(analysisTab==='goal')   renderGoalSim();
+  if(analysisTab==='debt')   renderDebtAnalysis();
+  if(analysisTab==='tax')    renderTaxPage();
+}
+
+// ── 💰 순자산 증감 원인 분석 ──
+function renderWealthAnalysis(){
+  const mos = getMonthlyTotals2();
+  if(!mos.length) return;
+
+  const last = mos[mos.length-1];
+  const prev = mos.length>1 ? mos[mos.length-2] : null;
+
+  // 이번달 요약
+  const invGain = last.pnl - (prev?prev.pnl:0); // 투자수익 변화
+  const netSave = last.depCum - (prev?prev.depCum:0) - (last.wdCum - (prev?prev.wdCum:0)); // 순저축
+  const netChange = last.curr - (prev?prev.curr:0); // 순자산 변화
+  const invContrib = last.curr>0 ? (invGain/Math.abs(netChange||1)*100) : 0;
+
+  const summaryEl = document.getElementById('an-wealth-summary');
+  if(summaryEl){
+    summaryEl.innerHTML = `
+      <div class="card-header">
+        <div class="card-header-title">이번달 순자산 변화</div>
+        <div class="card-header-value ${netChange>=0?'pos':'neg'}">${netChange>=0?'+':''}${fmtN(netChange)}원</div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-label">💹 투자수익</div>
+          <div class="summary-value ${invGain>=0?'pos':'neg'}">${invGain>=0?'+':''}${fmtN(invGain)}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">💰 순저축</div>
+          <div class="summary-value ${netSave>=0?'pos':'neg'}">${netSave>=0?'+':''}${fmtN(netSave)}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">📈 수익기여도</div>
+          <div class="summary-value pos">${netChange!==0?Math.round(invContrib)+'%':'—'}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">💸 출금(이월)</div>
+          <div class="summary-value neg">${last.wdMonth>0?'-'+fmtN(last.wdMonth):'—'}</div>
+        </div>
+      </div>`;
+  }
+
+  // 원인 분해 바 차트
+  const breakdownEl = document.getElementById('an-wealth-breakdown');
+  if(breakdownEl && mos.length>=2){
+    const items = [
+      {label:'💹 투자수익', value:invGain, color:'#05C072'},
+      {label:'💰 순저축', value:netSave, color:'#3182F6'},
+      {label:'💸 출금', value:-(last.wdMonth||0), color:'#F04452'},
+    ].filter(i=>i.value!==0);
+    const maxAbs = Math.max(...items.map(i=>Math.abs(i.value)),1);
+    breakdownEl.innerHTML = items.map(item=>{
+      const pct = Math.abs(item.value)/maxAbs*100;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="font-size:11px;min-width:80px;font-weight:600">${item.label}</div>
+        <div style="flex:1;background:var(--gray-200);border-radius:4px;height:20px;overflow:hidden;position:relative">
+          <div style="height:100%;border-radius:4px;background:${item.value>=0?item.color:'#F04452'};width:${pct}%"></div>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:${item.value>=0?item.color:'#F04452'};min-width:80px;text-align:right">${item.value>=0?'+':''}${fmtN(item.value)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // 월별 성과 테이블
+  const tbody = document.getElementById('an-wealth-tbody');
+  if(tbody){
+    let prevMo = null;
+    tbody.innerHTML = mos.map((m,i)=>{
+      const pInvGain = prevMo ? m.pnl - prevMo.pnl : 0;
+      const pNetSave = prevMo ? (m.depCum-prevMo.depCum)-(m.wdCum-prevMo.wdCum) : 0;
+      const pNetChange = prevMo ? m.curr-prevMo.curr : 0;
+      const pContrib = pNetChange!==0 ? Math.round(pInvGain/Math.abs(pNetChange)*100) : 0;
+      prevMo = m;
+      return `<tr style="${i%2?'':'background:var(--gray-50)'}">
+        <td style="padding:9px 12px;font-size:11px;font-weight:700;white-space:nowrap">${fmtMo(m.month)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;color:${pInvGain>=0?'var(--green)':'var(--red)'};font-weight:600">${i>0?(pInvGain>=0?'+':'')+fmtN(pInvGain):'—'}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;color:${pNetSave>=0?'var(--green)':'var(--red)'}">${i>0?(pNetSave>=0?'+':'')+fmtN(pNetSave):'—'}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pNetChange>=0?'var(--green)':'var(--red)'}">${i>0?(pNetChange>=0?'+':'')+fmtN(pNetChange):'—'}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;color:var(--primary)">${i>0&&pNetChange!==0?pContrib+'%':'—'}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// ── 🎯 목표 달성 시뮬레이션 ──
+function renderGoalSim(){
+  const nw = getNetWorth();
+  const inv = getInvTotals();
+  const current = nw.total || inv.curr;
+  const target = (Number(document.getElementById('sim-target')?.value)||8.5)*100000000;
+  const targetDate = document.getElementById('sim-target-date')?.value || '2029-03';
+  const now = new Date();
+  const td = new Date(targetDate+'-01');
+  const months = Math.max(1,Math.round((td-now)/(1000*60*60*24*30.44)));
+  const gap = target - current;
+
+  const el = document.getElementById('an-goal-main');
+  if(el){
+    const pct = Math.min(100,(current/target*100)).toFixed(1);
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;color:var(--sub)">현재</span>
+        <span style="font-size:12px;color:var(--sub)">목표 ${fmtM(target)}</span>
+      </div>
+      <div class="progress" style="height:12px;border-radius:6px;margin-bottom:8px">
+        <div class="progress-bar" style="background:var(--primary);width:${pct}%;border-radius:6px;height:100%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="font-weight:700;color:var(--primary)">${fmtM(current)} (${pct}%)</span>
+        <span style="color:var(--sub)">부족 ${fmtM(gap)}</span>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--sub)">남은 기간: <strong style="color:var(--text)">${Math.floor(months/12)}년 ${months%12}개월</strong></div>`;
+  }
+  runGoalSim();
+}
+
+function runGoalSim(){
+  const nw = getNetWorth();
+  const inv = getInvTotals();
+  const current = nw.total || inv.curr;
+  const target = (Number(document.getElementById('sim-target')?.value)||8.5)*100000000;
+  const targetDate = document.getElementById('sim-target-date')?.value || '2029-03';
+  const monthlySave = rawNum('sim-monthly-save') || 0;
+  const annualRate = Number(document.getElementById('sim-annual-rate')?.value)||10;
+  const monthlyRate = annualRate/100/12;
+
+  const now = new Date();
+  const td = new Date(targetDate+'-01');
+  const totalMonths = Math.max(1,Math.round((td-now)/(1000*60*60*24*30.44)));
+
+  // 3가지 시나리오: 보수/현실/낙관
+  const scenarios = [
+    {label:'보수적 ('+Math.max(0,annualRate-5)+'%)', rate:(Math.max(0,annualRate-5))/100/12, color:'#F04452'},
+    {label:'현실적 ('+annualRate+'%)', rate:monthlyRate, color:'#3182F6'},
+    {label:'낙관적 ('+(annualRate+5)+'%)', rate:(annualRate+5)/100/12, color:'#05C072'},
+  ];
+
+  const resultEl = document.getElementById('an-goal-result');
+  if(resultEl){
+    resultEl.innerHTML = scenarios.map(s=>{
+      let bal = current;
+      for(let i=0;i<totalMonths;i++) bal = bal*(1+s.rate)+monthlySave;
+      const achieved = bal >= target;
+      const pct = (bal/target*100).toFixed(0);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:${achieved?'#F0FBF8':'#FFF5F5'};margin-bottom:6px">
+        <span style="font-size:11px;font-weight:600;color:${s.color}">${s.label}</span>
+        <span style="font-size:12px;font-weight:700;color:${achieved?'var(--green)':'var(--red)'}">${fmtM(bal)} (${pct}%) ${achieved?'✅':'❌'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // 차트 (6개월 간격 예측선)
+  const chartEl = document.getElementById('an-goal-chart');
+  if(chartEl){
+    const points = Math.min(totalMonths,60);
+    const step = Math.max(1,Math.floor(points/12));
+    const labels = [];
+    const datasets = scenarios.map(s=>({label:s.label, color:s.color, data:[]}));
+    for(let i=0;i<=points;i+=step){
+      const m = new Date(now); m.setMonth(m.getMonth()+i);
+      labels.push(m.getFullYear()+"/"+(m.getMonth()+1));
+      scenarios.forEach((s,si)=>{
+        let bal = current;
+        for(let j=0;j<i;j++) bal = bal*(1+s.rate)+monthlySave;
+        datasets[si].data.push(Math.round(bal/100000000*10)/10);
+      });
+    }
+    // 간단한 라인 차트 렌더
+    const maxVal = Math.max(...datasets.flatMap(d=>d.data), target/100000000)*1.1;
+    const h = 200;
+    const w = chartEl.offsetWidth || 350;
+    const pad = {t:10,r:10,b:30,l:40};
+    const cw = w-pad.l-pad.r, ch = h-pad.t-pad.b;
+    const xScale = i => pad.l + (i/(labels.length-1))*cw;
+    const yScale = v => pad.t + ch - (v/maxVal)*ch;
+    let svg = `<svg width="${w}" height="${h}" style="overflow:visible">`;
+    // 목표선
+    const ty = yScale(target/100000000);
+    svg += `<line x1="${pad.l}" y1="${ty}" x2="${pad.l+cw}" y2="${ty}" stroke="#FFD700" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="${pad.l+cw+2}" y="${ty+4}" font-size="9" fill="#856404">목표</text>`;
+    // 데이터 라인
+    datasets.forEach(ds=>{
+      const pts = ds.data.map((v,i)=>`${xScale(i)},${yScale(v)}`).join(' ');
+      svg += `<polyline points="${pts}" fill="none" stroke="${ds.color}" stroke-width="2"/>`;
+      // 레이블
+      svg += `<text x="${pad.l}" y="${h-2}" font-size="8" fill="${ds.color}">${ds.label.split('(')[0]}</text>`;
+    });
+    // X축 레이블 (처음/중간/끝)
+    [0, Math.floor((labels.length-1)/2), labels.length-1].forEach(i=>{
+      if(i<labels.length) svg += `<text x="${xScale(i)}" y="${h-4}" font-size="8" fill="var(--sub)" text-anchor="middle">${labels[i]}</text>`;
+    });
+    svg += '</svg>';
+    chartEl.innerHTML = svg;
+  }
+}
+
+// ── 🏦 대출 분석 ──
+function renderDebtAnalysis(){
+  const items = DB.debt.filter(r=>r&&r.name).map(r=>({...r,balance:Number(r.balance)||0,monthly:Number(r.monthly)||0,rate:Number(r.rate)||0}));
+  const totalDebt = items.reduce((s,r)=>s+r.balance,0);
+  const totalMonthly = items.reduce((s,r)=>s+r.monthly,0);
+  const nw = getNetWorth();
+  const debtRatio = nw.total>0 ? totalDebt/nw.total*100 : 0;
+
+  // 요약
+  const summaryEl = document.getElementById('an-debt-summary');
+  if(summaryEl){
+    summaryEl.innerHTML = `
+      <div class="card-header">
+        <div class="card-header-title">총 부채</div>
+        <div class="card-header-value neg">-${fmtM(totalDebt)}</div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-item"><div class="summary-label">월 납입 합계</div><div class="summary-value neg">-${fmtN(totalMonthly)}</div></div>
+        <div class="summary-item"><div class="summary-label">부채비율</div><div class="summary-value ${debtRatio>50?'neg':'pos'}">${debtRatio.toFixed(1)}%</div></div>
+        <div class="summary-item"><div class="summary-label">연간 이자</div><div class="summary-value neg">-${fmtN(items.reduce((s,r)=>s+r.balance*r.rate/100,0).toFixed(0))}</div></div>
+        <div class="summary-item"><div class="summary-label">대출 건수</div><div class="summary-value">${items.length}건</div></div>
+      </div>`;
+  }
+
+  // 대출 선택 드롭다운 채우기
+  const sel = document.getElementById('sim-debt-sel');
+  if(sel && sel.options.length<=1){
+    items.forEach(r=>{
+      const opt = document.createElement('option');
+      opt.value = r.id; opt.textContent = r.name+' ('+fmtM(r.balance)+')';
+      sel.appendChild(opt);
+    });
+  }
+
+  // 부채비율 추이 차트 (투자자산 대비)
+  const mos = getMonthlyTotals2();
+  const chartEl = document.getElementById('an-debt-ratio-chart');
+  if(chartEl && mos.length>1){
+    const data = mos.map(m=>totalDebt>0?(totalDebt/m.curr*100).toFixed(1):0);
+    drawLineChart(chartEl, mos.map(m=>m.month), data.map(Number), '#F04452', '%', 0);
+  }
+}
+
+function runDebtSim(){
+  const selEl = document.getElementById('sim-debt-sel');
+  const id = selEl?.value;
+  const debt = DB.debt.find(r=>r.id===id);
+  const balance = debt ? Number(debt.balance)||0 : 0;
+  const currentRate = Number(document.getElementById('sim-debt-rate')?.value)||0;
+  const newRate = Number(document.getElementById('sim-debt-new-rate')?.value)||0;
+  const months = Number(document.getElementById('sim-debt-months')?.value)||120;
+  const extra = rawNum('sim-debt-extra')||0;
+  const resultEl = document.getElementById('an-debt-sim-result');
+  if(!resultEl||!balance||!months) return;
+
+  // 현재 조건 총이자
+  const mr1 = currentRate/100/12;
+  const mp1 = mr1>0 ? balance*mr1*Math.pow(1+mr1,months)/(Math.pow(1+mr1,months)-1) : balance/months;
+  const totalInt1 = mp1*months - balance;
+
+  // 새 금리 총이자
+  const mr2 = newRate/100/12;
+  const mp2 = mr2>0 ? balance*mr2*Math.pow(1+mr2,months)/(Math.pow(1+mr2,months)-1) : balance/months;
+  const totalInt2 = mp2*months - balance;
+
+  // 추가 상환 시 만기 단축
+  let earlyMonths = months;
+  if(extra>0){
+    let bal = balance;
+    earlyMonths = 0;
+    while(bal>0 && earlyMonths<months*2){
+      const interest = bal*(mr2||0);
+      const principal = (mp2+extra) - interest;
+      bal -= principal;
+      earlyMonths++;
+    }
+  }
+
+  const saving = totalInt1 - totalInt2;
+
+  resultEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div style="background:var(--red-l);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:4px">현재 조건 월납입</div>
+        <div style="font-size:16px;font-weight:800;color:var(--red)">-${fmtN(Math.round(mp1))}</div>
+        <div style="font-size:10px;color:var(--sub);margin-top:4px">총이자 ${fmtM(totalInt1)}</div>
+      </div>
+      <div style="background:var(--green-l);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:4px">새 조건 월납입</div>
+        <div style="font-size:16px;font-weight:800;color:var(--green)">-${fmtN(Math.round(mp2))}</div>
+        <div style="font-size:10px;color:var(--sub);margin-top:4px">총이자 ${fmtM(totalInt2)}</div>
+      </div>
+    </div>
+    ${saving>0?`<div style="background:var(--primary-l);border-radius:10px;padding:12px;text-align:center;margin-bottom:8px">
+      <div style="font-size:12px;color:var(--primary);font-weight:700">💰 금리 변경 시 총 절감액</div>
+      <div style="font-size:22px;font-weight:900;color:var(--primary)">+${fmtN(Math.round(saving))}원</div>
+    </div>`:''}
+    ${extra>0?`<div style="background:var(--green-l);border-radius:10px;padding:10px;text-align:center">
+      <div style="font-size:11px;color:var(--green);font-weight:700">추가 상환 시 만기 단축: ${months-earlyMonths}개월</div>
+      <div style="font-size:12px;color:var(--sub)">→ ${Math.floor(earlyMonths/12)}년 ${earlyMonths%12}개월로 단축</div>
+    </div>`:''}`;
+
+  // 대출 잔액 선택 시 금리/기간 자동 입력
+  if(debt && !document.getElementById('sim-debt-rate').value){
+    document.getElementById('sim-debt-rate').value = debt.rate||0;
+    if(debt.start && debt.end){
+      const s=new Date(debt.start+'-01'), e=new Date(debt.end+'-01'), now=new Date();
+      const remain=Math.max(1,Math.round((e-now)/(1000*60*60*24*30.44)));
+      document.getElementById('sim-debt-months').value = remain;
+    }
+  }
+}
+
+// ── 💸 세금 시뮬레이터 ──
+function renderTaxPage(){
+  // bindComma
+  ['hi-salary','hi-finance-income','hi-property','fi-interest','fi-dividend','fi-other','sim-monthly-save','sim-debt-extra']
+    .forEach(id=>{ const el=document.getElementById(id); if(el&&!el.dataset.bound){ bindComma(id); el.dataset.bound='1'; }});
+}
+
+function calcHealthInsurance(){
+  const type = document.getElementById('hi-type')?.value || '직장';
+  const salary = rawNum('hi-salary');
+  const finIncome = rawNum('hi-finance-income');
+  const property = rawNum('hi-property');
+  const resultEl = document.getElementById('hi-result');
+  if(!resultEl) return;
+
+  let healthPremium=0, careInsurance=0, total=0;
+
+  if(type==='직장'){
+    // 2024년 직장가입자: 보수월액 × 7.09% / 2 (본인부담)
+    const HEALTH_RATE = 0.0709/2;
+    const CARE_RATE = 0.00918/2;
+    healthPremium = Math.round(salary * HEALTH_RATE);
+    careInsurance = Math.round(salary * CARE_RATE);
+    // 금융소득 1000만원 초과분 추가 (피부양자 탈락 등은 제외)
+    if(finIncome > 10000000){
+      const extra = (finIncome-10000000) * HEALTH_RATE * 0.5; // 보수외소득 반영
+      healthPremium += Math.round(extra/12);
+    }
+  } else {
+    // 지역가입자: 소득 + 재산 점수제 (간략 계산)
+    const incomeScore = Math.round((salary*12+finIncome)/1000000); // 연소득(만원)
+    const propertyScore = Math.round(property/1000000/10); // 재산 간략
+    const totalScore = incomeScore + propertyScore;
+    const scoreRate = 208.4; // 2024년 부과점수당 금액(원)
+    healthPremium = Math.round(totalScore * scoreRate);
+    careInsurance = Math.round(healthPremium * 0.1295);
+  }
+  total = healthPremium + careInsurance;
+
+  resultEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div style="background:var(--primary-l);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:3px">건강보험료</div>
+        <div style="font-size:14px;font-weight:800;color:var(--primary)">${fmtN(healthPremium)}</div>
+      </div>
+      <div style="background:var(--green-l);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:3px">장기요양보험</div>
+        <div style="font-size:14px;font-weight:800;color:var(--green)">${fmtN(careInsurance)}</div>
+      </div>
+      <div style="background:var(--red-l);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:3px">월 합계</div>
+        <div style="font-size:14px;font-weight:800;color:var(--red)">-${fmtN(total)}</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--sub);margin-top:8px;text-align:center">* 2024년 기준 참고용 추정치. 정확한 금액은 국민건강보험공단 확인 필요.</div>`;
+}
+
+function calcFinanceIncome(){
+  const interest = rawNum('fi-interest');
+  const dividend = rawNum('fi-dividend');
+  const other = rawNum('fi-other');
+  const total = interest+dividend;
+  const THRESHOLD = 20000000;
+  const resultEl = document.getElementById('fi-result');
+  if(!resultEl) return;
+
+  if(total <= THRESHOLD){
+    resultEl.innerHTML = `<div style="background:var(--green-l);border-radius:10px;padding:12px;text-align:center">
+      <div style="font-size:13px;font-weight:700;color:var(--green)">✅ 분리과세 대상</div>
+      <div style="font-size:12px;color:var(--sub);margin-top:4px">금융소득 ${fmtN(total)}원 — 2,000만원 이하로 분리과세(15.4%) 적용</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:6px">원천징수세액: ${fmtN(Math.round(total*0.154))}원</div>
+    </div>`;
+    return;
+  }
+
+  // 종합과세
+  const excess = total - THRESHOLD;
+  const totalIncome = excess + other + THRESHOLD*0.154; // 기본세액 포함
+  // 누진세율 적용
+  const brackets=[
+    {limit:14000000,rate:0.06,deduct:0},
+    {limit:50000000,rate:0.15,deduct:1260000},
+    {limit:88000000,rate:0.24,deduct:5760000},
+    {limit:150000000,rate:0.35,deduct:15440000},
+    {limit:300000000,rate:0.38,deduct:19940000},
+    {limit:500000000,rate:0.40,deduct:25940000},
+    {limit:Infinity,rate:0.45,deduct:65940000},
+  ];
+  let tax=0;
+  for(const b of brackets){
+    if(excess+other<=b.limit){ tax=Math.max(0,(excess+other)*b.rate-b.deduct); break; }
+  }
+  const baseTax = THRESHOLD*0.154;
+  const finalTax = Math.max(tax+baseTax, total*0.154);
+  const localTax = finalTax*0.1;
+
+  resultEl.innerHTML = `<div style="background:var(--red-l);border-radius:10px;padding:12px;margin-bottom:8px;text-align:center">
+    <div style="font-size:13px;font-weight:700;color:var(--red)">⚠️ 종합과세 대상</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:4px">금융소득 ${fmtN(total)}원 — 2,000만원 초과</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="background:var(--gray-50);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--sub)">종합소득세 (추정)</div>
+      <div style="font-size:15px;font-weight:800;color:var(--red)">-${fmtN(Math.round(finalTax))}</div>
+    </div>
+    <div style="background:var(--gray-50);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--sub)">지방소득세 포함</div>
+      <div style="font-size:15px;font-weight:800;color:var(--red)">-${fmtN(Math.round(finalTax+localTax))}</div>
+    </div>
+  </div>
+  <div style="font-size:10px;color:var(--sub);margin-top:8px;text-align:center">* 추정치. 정확한 세액은 세무사 상담 필요.</div>`;
+}
+
+// ── 🤖 AI 재무 리포트 ──
+async function genAIReport(type){
+  const loadEl=document.getElementById('ai-report-loading');
+  const contentEl=document.getElementById('ai-report-content');
+  if(!loadEl||!contentEl)return;
+
+  loadEl.style.display='block';
+  contentEl.textContent='';
+
+  const inv=getInvTotals();
+  const nw=getNetWorth();
+  const mos=getMonthlyTotals2();
+  const last=mos.length?mos[mos.length-1]:null;
+  const prev=mos.length>1?mos[mos.length-2]:null;
+
+  const prompts={
+    monthly:`당신은 재무 분석 전문가입니다. 다음 투자 데이터를 분석해서 한국어로 이번달 재무 리포트를 작성해주세요.
+
+【이번달 현황】
+- 총 투자자산: ${fmtN(inv.curr)}원
+- 투자수익률: ${fmtP(inv.rate)}
+- 총 손익: ${fmtN(inv.pnl)}원
+- 순자산: ${fmtN(nw.total)}원
+${last&&prev?`- 전월 대비 자산 변화: ${fmtN(last.curr-prev.curr)}원`:''}
+
+【계좌별 현황】
+${getAllInvLatest().slice(0,6).map(a=>`- ${a.acct}: ${fmtN(a.curr)}원 (${fmtP(a.rate)})`).join('\n')}
+
+다음 형식으로 작성해주세요:
+1. 이번달 성과 요약 (3줄)
+2. 잘된 점 (2가지)
+3. 개선이 필요한 점 (2가지)
+4. 다음달 권장 액션 (3가지)`,
+
+    annual:`재무 분석 전문가로서 다음 연간 투자 데이터를 분석해주세요.
+
+【연간 투자 추이】
+${mos.slice(-12).map(m=>`${fmtMo(m.month)}: 자산 ${fmtM(m.curr)}, 수익률 ${fmtP(m.rate)}`).join('\n')}
+
+【현재 포트폴리오】
+- 총 투자자산: ${fmtM(inv.curr)}
+- 총 수익률: ${fmtP(inv.rate)}
+- 총 손익: ${fmtM(inv.pnl)}
+
+연간 성과 분석, 수익률 추이, 개선 방향을 한국어로 작성해주세요.`,
+
+    invest:`투자 전문가로서 다음 포트폴리오를 분석해주세요.
+
+【계좌별 수익률】
+${getAllInvLatest().map(a=>`- ${a.acct}: ${fmtN(a.curr)}원, 수익률 ${fmtP(a.rate)}, 손익 ${fmtN(a.pnl)}원`).join('\n')}
+
+- 총 투자원금: ${fmtM(inv.prin)}
+- 총 현재자산: ${fmtM(inv.curr)}
+- 총 수익률: ${fmtP(inv.rate)}
+
+포트폴리오 분석, 리스크 평가, 자산 배분 개선 방향을 한국어로 작성해주세요.`,
+
+    advice:`재무 설계사로서 다음 재무 현황을 바탕으로 맞춤형 조언을 해주세요.
+
+【재무 현황】
+- 순자산: ${fmtM(nw.total)}
+- 총 투자자산: ${fmtM(inv.curr)}, 수익률 ${fmtP(inv.rate)}
+- 총 부채: ${fmtM(nw.debt)}
+- 부채비율: ${nw.total>0?(nw.debt/nw.total*100).toFixed(1):'0'}%
+- 목표: 2029년 3월까지 8.5억 달성 (상봉동 더샵 입주)
+- 현재 달성률: ${(nw.total/850000000*100).toFixed(1)}%
+
+구체적이고 실행 가능한 재무 조언을 한국어로 3~5가지 제공해주세요.`
+  };
+
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompts[type]}]
+      })
+    });
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '분석 결과를 가져올 수 없습니다.';
+    contentEl.textContent = text;
+  }catch(e){
+    contentEl.textContent = '⚠️ AI 리포트 생성 실패: '+e.message+'\n\n네트워크 연결을 확인해주세요.';
+  }finally{
+    loadEl.style.display='none';
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // 초기화
