@@ -4125,6 +4125,31 @@ function getAllInvLatest(){
   }).sort((a,b)=>b.curr-a.curr);
 }
 
+// 프롬프트 압축 — URL 2000자 이내로 핵심 수치만 추출
+function buildShortPrompt(type){
+  const inv=getInvTotals();
+  const nw=getNetWorth();
+  const mos=getMonthlyTotals2();
+  const last=mos.length?mos[mos.length-1]:null;
+  const prev=mos.length>1?mos[mos.length-2]:null;
+  const chgStr=last&&prev?('\n【전월대비】'+fmtN(last.curr-prev.curr)+'원 변화'):'';
+  const baseStr='재무 분석 전문가로서 한국어로 분석.\n【현황】순자산:'+fmtM(nw.total)+
+    ' / 투자:'+fmtM(inv.curr)+' / 수익률:'+fmtP(inv.rate)+
+    ' / 손익:'+fmtN(inv.pnl)+'원 / 부채:'+fmtM(nw.debt)+chgStr;
+  const topAccts=getAllInvLatest().slice(0,5).map(a=>a.acct+':'+fmtM(a.curr)+'('+fmtP(a.rate)+')').join(', ');
+  const recentMos=mos.slice(-6).map(m=>fmtMo(m.month)+':'+fmtM(m.curr)+'('+fmtP(m.rate)+')').join(' / ');
+  const allAccts=getAllInvLatest().map(a=>a.acct+':'+fmtM(a.curr)+'('+fmtP(a.rate)+')').join('\n');
+  const goalPct=(nw.total/850000000*100).toFixed(1);
+
+  const p={
+    monthly: baseStr+'\n【계좌】'+topAccts+'\n이번달 재무 리포트: 1)성과요약 2)잘된점 3)개선점 4)다음달 액션',
+    annual:  baseStr+'\n【최근6개월】'+recentMos+'\n연간 성과 분석, 수익률 추이, 개선 방향을 작성해주세요.',
+    invest:  '투자 포트폴리오 분석.\n【계좌별】'+allAccts+'\n총수익률:'+fmtP(inv.rate)+' / 총손익:'+fmtM(inv.pnl)+'\n포트폴리오 분석, 리스크, 개선 방향.',
+    advice:  baseStr+'\n목표: 2029년3월 8.5억(더샵 입주) / 달성률:'+goalPct+'%\n실행 가능한 재무 조언 3-5가지.'
+  };
+  return p[type]||p.monthly;
+}
+
 function renderMarkdown(text){
   if(!text) return '';
   const lines = text.split('\n');
@@ -4660,14 +4685,29 @@ ${getAllInvLatest().map(a=>`- ${a.acct}: ${fmtN(a.curr)}원, 수익률 ${fmtP(a.
   }
   try{
     // GAS를 프록시로 사용하여 CORS 우회 (프롬프트 인코딩)
-    const encodedPrompt = encodeURIComponent(prompts[type]);
-    const url = GAS_URL + '?action=ai&prompt=' + encodedPrompt;
-    const xhr = new XMLHttpRequest();
-    const res = await new Promise((resolve,reject)=>{
-      xhr.open('GET', url);
-      xhr.onload=()=>{ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject(e); } };
-      xhr.onerror=()=>reject(new Error('네트워크 오류'));
-      xhr.send();
+    // 프롬프트를 GAS로 POST (GET URL 길이 한계 우회)
+    const res = await new Promise((resolve, reject)=>{
+      const xhr = new XMLHttpRequest();
+      // GAS는 GET만 지원하므로 프롬프트를 청크로 나눠 전송
+      // 대신 type과 핵심 수치만 전달하고 GAS에서 AI 프롬프트 생성
+      const prompt = prompts[type];
+      // URL 안전 인코딩 (긴 프롬프트는 청크 분할)
+      const MAX = 2000;
+      if(prompt.length <= MAX){
+        const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
+        xhr.open('GET', url);
+        xhr.onload=()=>{ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject(e); } };
+        xhr.onerror=()=>reject(new Error('네트워크 오류'));
+        xhr.send();
+      } else {
+        // 프롬프트가 길면 핵심 수치만 추출해서 전송
+        const shortPrompt = buildShortPrompt(type);
+        const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(shortPrompt);
+        xhr.open('GET', url);
+        xhr.onload=()=>{ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject(e); } };
+        xhr.onerror=()=>reject(new Error('네트워크 오류'));
+        xhr.send();
+      }
     });
     if(res.ok && res.text){
       // 마크다운 스타일 렌더링
