@@ -2004,7 +2004,7 @@ function doGet(e) {
     if (action === 'upsert') return handleUpsert(sheet, JSON.parse(decodeURIComponent(p.data)));
     if (action === 'delete') return handleDelete(sheet, p.id || p.key);
     if (action === 'bulkInit') return handleBulkInit(sheet, JSON.parse(decodeURIComponent(p.data)));
-    if (action === 'ai') return handleAI(decodeURIComponent(p.prompt || ''));
+    if (action === 'ai') return handleAI(p.prompt || '');  // GAS가 자동 디코딩
     return readAll(sheet);
   } catch(err) { return resp({ ok:false, error:err.message }); }
 }
