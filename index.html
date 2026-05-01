@@ -4625,26 +4625,27 @@ async function genAIReport(type){
     // buildShortPrompt로 압축된 프롬프트 생성
     const prompt = buildShortPrompt(type);
 
-    // 디버그: 프롬프트 확인
-    console.log('[AI] prompt length:', prompt.length);
-    console.log('[AI] prompt preview:', prompt.slice(0,100));
+    // 화면에 디버그 정보 표시
+    contentEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:8px;background:var(--gray-50);border-radius:8px;margin-bottom:8px">🔍 분석 중...<br>프롬프트 길이: '+prompt.length+'자</div>';
 
-    // 인코딩 전 문자 검사
+    // 인코딩
     let encoded;
     try {
       encoded = encodeURIComponent(prompt);
     } catch(encErr) {
-      // 어떤 문자가 문제인지 찾기
+      // 문제 문자 찾기
+      let badChars = [];
       for(let i=0;i<prompt.length;i++){
         try{ encodeURIComponent(prompt[i]); }
-        catch(e2){ console.error('[AI] bad char at',i,':', prompt.charCodeAt(i), prompt[i]); }
+        catch(e2){ badChars.push('pos:'+i+' code:'+prompt.charCodeAt(i)); }
       }
-      throw new Error('프롬프트 인코딩 실패: ' + encErr.message);
+      throw new Error('인코딩 실패 — 문제문자: '+badChars.join(', '));
     }
+
+    contentEl.innerHTML += '<div style="font-size:11px;color:var(--sub);padding:4px 8px">인코딩 길이: '+encoded.length+'자<br>GAS 호출 중...</div>';
 
     // fetch로 GAS 호출
     const url = GAS_URL + '?action=ai&prompt=' + encoded;
-    console.log('[AI] url length:', url.length);
     const res = await fetch(url).then(r=>r.json());
 
     if(res.ok && res.text){
