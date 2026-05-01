@@ -4621,40 +4621,53 @@ async function genAIReport(type){
   loadEl.style.display='block';
   contentEl.innerHTML='';
 
+  // 단계별 실행 — 에러 위치 화면 표시
+  const step = (msg) => { contentEl.innerHTML += '<div style="font-size:11px;color:var(--sub);padding:2px 8px">'+msg+'</div>'; };
+
   try{
-    // buildShortPrompt로 압축된 프롬프트 생성
-    const prompt = buildShortPrompt(type);
+    step('1단계: buildShortPrompt 시작');
+    let prompt;
+    try {
+      prompt = buildShortPrompt(type);
+      step('2단계: 프롬프트 생성 완료 ('+prompt.length+'자)');
+    } catch(e1) {
+      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ buildShortPrompt 오류: '+e1.message+'</div>';
+      return;
+    }
 
-    // 화면에 디버그 정보 표시
-    contentEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:8px;background:var(--gray-50);border-radius:8px;margin-bottom:8px">🔍 분석 중...<br>프롬프트 길이: '+prompt.length+'자</div>';
-
-    // 인코딩
+    step('3단계: 인코딩 시작');
     let encoded;
     try {
       encoded = encodeURIComponent(prompt);
-    } catch(encErr) {
-      // 문제 문자 찾기
-      let badChars = [];
+      step('4단계: 인코딩 완료 ('+encoded.length+'자)');
+    } catch(e2) {
+      let badInfo = '';
       for(let i=0;i<prompt.length;i++){
         try{ encodeURIComponent(prompt[i]); }
-        catch(e2){ badChars.push('pos:'+i+' code:'+prompt.charCodeAt(i)); }
+        catch(e3){ badInfo += ' [pos:'+i+' char:'+prompt.charCodeAt(i)+']'; }
       }
-      throw new Error('인코딩 실패 — 문제문자: '+badChars.join(', '));
+      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ 인코딩 오류: '+e2.message+badInfo+'</div>';
+      return;
     }
 
-    contentEl.innerHTML += '<div style="font-size:11px;color:var(--sub);padding:4px 8px">인코딩 길이: '+encoded.length+'자<br>GAS 호출 중...</div>';
-
-    // fetch로 GAS 호출
-    const url = GAS_URL + '?action=ai&prompt=' + encoded;
-    const res = await fetch(url).then(r=>r.json());
+    step('5단계: GAS 호출 중...');
+    let res;
+    try {
+      const url = GAS_URL + '?action=ai&prompt=' + encoded;
+      res = await fetch(url).then(r=>r.json());
+      step('6단계: GAS 응답 수신');
+    } catch(e4) {
+      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ GAS 호출 오류: '+e4.message+'</div>';
+      return;
+    }
 
     if(res.ok && res.text){
       contentEl.innerHTML = renderMarkdown(res.text);
     } else {
-      contentEl.textContent = '⚠️ 분석 실패: '+(res.error||'알 수 없는 오류')+'\n\nApps Script 코드가 최신 버전인지, ANTHROPIC_API_KEY가 설정됐는지 확인해주세요.';
+      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ GAS 응답 오류: '+(res.error||JSON.stringify(res))+'</div>';
     }
   }catch(e){
-    contentEl.textContent = '⚠️ AI 리포트 생성 실패: '+e.message+'\n\nApps Script URL과 네트워크를 확인해주세요.';
+    contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ 전체 오류: '+e.message+'</div>';
   }finally{
     loadEl.style.display='none';
   }
