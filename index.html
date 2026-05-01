@@ -4625,8 +4625,26 @@ async function genAIReport(type){
     // buildShortPrompt로 압축된 프롬프트 생성
     const prompt = buildShortPrompt(type);
 
-    // fetch로 GAS 호출 (no-cors 우회를 위해 mode 생략)
-    const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
+    // 디버그: 프롬프트 확인
+    console.log('[AI] prompt length:', prompt.length);
+    console.log('[AI] prompt preview:', prompt.slice(0,100));
+
+    // 인코딩 전 문자 검사
+    let encoded;
+    try {
+      encoded = encodeURIComponent(prompt);
+    } catch(encErr) {
+      // 어떤 문자가 문제인지 찾기
+      for(let i=0;i<prompt.length;i++){
+        try{ encodeURIComponent(prompt[i]); }
+        catch(e2){ console.error('[AI] bad char at',i,':', prompt.charCodeAt(i), prompt[i]); }
+      }
+      throw new Error('프롬프트 인코딩 실패: ' + encErr.message);
+    }
+
+    // fetch로 GAS 호출
+    const url = GAS_URL + '?action=ai&prompt=' + encoded;
+    console.log('[AI] url length:', url.length);
     const res = await fetch(url).then(r=>r.json());
 
     if(res.ok && res.text){
