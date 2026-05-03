@@ -321,6 +321,41 @@ body {
 .loading-text { font-size: 13px; color: var(--gray-600); font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── 저장 진행 표시 ── */
+#save-bar {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: var(--primary); z-index: 9999;
+  display: none; pointer-events: none;
+}
+#save-bar.active {
+  display: block;
+  animation: saveSlide 1.2s ease-in-out infinite;
+}
+@keyframes saveSlide {
+  0%   { left: -35%; width: 35%; }
+  100% { left: 110%; width: 35%; }
+}
+#save-indicator {
+  position: fixed; bottom: calc(60px + env(safe-area-inset-bottom) + 12px);
+  left: 50%; transform: translateX(-50%);
+  background: var(--gray-800); color: #fff;
+  padding: 7px 16px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  display: none; align-items: center; gap: 8px;
+  z-index: 400; pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  white-space: nowrap;
+}
+#save-indicator.show { display: flex; }
+.save-spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  flex-shrink: 0;
+}
+
 /* ── 빈 상태 ── */
 .empty { text-align: center; padding: 40px 20px; color: var(--gray-400); }
 .empty-icon { font-size: 40px; margin-bottom: 10px; }
@@ -1970,6 +2005,10 @@ body {
   </div>
 </nav>
 
+<!-- 저장 진행 표시 -->
+<div id="save-bar"></div>
+<div id="save-indicator"><div class="save-spinner"></div><span id="save-indicator-msg">저장 중...</span></div>
+
 <!-- 토스트 -->
 <div id="toast"><span id="toast-icon"></span><span id="toast-msg"></span></div>
 
@@ -2255,6 +2294,23 @@ function setLoading(on, msg=''){
   if(tm) tm.textContent=msg;
 }
 
+let _savingCount = 0;
+function showSaving(msg='저장 중...'){
+  _savingCount++;
+  document.getElementById('save-bar').classList.add('active');
+  const ind = document.getElementById('save-indicator');
+  const msgEl = document.getElementById('save-indicator-msg');
+  if(msgEl) msgEl.textContent = msg;
+  ind.classList.add('show');
+}
+function hideSaving(){
+  _savingCount = Math.max(0, _savingCount - 1);
+  if(_savingCount === 0){
+    document.getElementById('save-bar').classList.remove('active');
+    document.getElementById('save-indicator').classList.remove('show');
+  }
+}
+
 async function gasReq(params){
   const pairs = Object.entries(params)
     .map(([k,v])=>k+'='+encodeURIComponent(typeof v==='object'?JSON.stringify(v):String(v)));
@@ -2291,16 +2347,20 @@ async function gasUpsert(sheet, rec){
   if(idx>=0) DB[sheet][idx]=rec; else DB[sheet].push(rec);
   saveCache();
   if(!GAS_URL) return;
+  showSaving('저장 중...');
   try{ await gasReq({sheet, action:'upsert', data:rec}); }
   catch(e){ showToast('시트 저장 실패 — 로컬에만 저장됨','error'); }
+  finally{ hideSaving(); }
 }
 
 async function gasDelete(sheet, key){
   DB[sheet] = DB[sheet].filter(r=>makeKey(sheet,r)!==key);
   saveCache();
   if(!GAS_URL) return;
+  showSaving('삭제 중...');
   try{ await gasReq({sheet, action:'delete', id:key}); }
   catch(e){ showToast('시트 삭제 실패','error'); }
+  finally{ hideSaving(); }
 }
 
 function findLocalIdx(sheet, rec){
