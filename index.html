@@ -1841,7 +1841,8 @@ body {
             1. <a href="https://console.anthropic.com" target="_blank" style="color:var(--primary)">console.anthropic.com</a> → API Keys → 키 발급<br>
             2. Apps Script 편집기 → 프로젝트 설정 → 스크립트 속성<br>
             3. 속성 추가: <code style="background:#fff;padding:1px 4px;border-radius:3px">ANTHROPIC_API_KEY</code> = 발급받은 키<br>
-            4. 설정탭 → 📋 복사 → Apps Script 코드 업데이트 후 재배포
+            4. 설정탭 → 📋 복사 → Apps Script 코드 업데이트 후 재배포<br>
+            5. Apps Script 편집기에서 <code style="background:#fff;padding:1px 4px;border-radius:3px">testAnthropicKey</code> 함수 실행 → 권한 승인 → 웹앱 재배포
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <button onclick="genAIReport('monthly')" class="btn btn-primary">📊 이번달 리포트</button>
@@ -2137,6 +2138,21 @@ function getHeaders(sheetKey) {
     install:['id','name','cat','company','totalAmt','months','monthly','rate','repayType','day','start','end','remainMonths','status','memo'],
   };
   return map[sheetKey] || ['id','data'];
+}
+
+// ── UrlFetchApp 권한 승인용 — Apps Script 편집기에서 1회 실행 필요 ──
+function testAnthropicKey() {
+  const ANTHROPIC_KEY = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!ANTHROPIC_KEY) { Logger.log('❌ ANTHROPIC_API_KEY 속성이 없습니다.'); return; }
+  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+    payload: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:10, messages:[{role:'user',content:'hi'}] }),
+    muteHttpExceptions: true
+  });
+  Logger.log('응답코드: ' + res.getResponseCode());
+  Logger.log('✅ UrlFetchApp 권한 승인 완료! 웹앱을 재배포하세요.');
 }
 
 // ── 테스트: Apps Script 편집화면에서 testUpsert 선택 후 실행 ──
@@ -4614,60 +4630,31 @@ async function genAIReport(type){
   const contentEl=document.getElementById('ai-report-content');
   if(!loadEl||!contentEl) return;
   if(!GAS_URL){
-    contentEl.textContent='⚠️ 설정 탭에서 Google Apps Script URL을 먼저 입력해주세요.';
+    contentEl.innerHTML='<div style="color:var(--orange);padding:8px">⚠️ 설정 탭에서 Google Apps Script URL을 먼저 입력해주세요.</div>';
     return;
   }
 
   loadEl.style.display='block';
   contentEl.innerHTML='';
 
-  // 단계별 실행 — 에러 위치 화면 표시
-  const step = (msg) => { contentEl.innerHTML += '<div style="font-size:11px;color:var(--sub);padding:2px 8px">'+msg+'</div>'; };
-
   try{
-    step('1단계: buildShortPrompt 시작');
-    let prompt;
-    try {
-      prompt = buildShortPrompt(type);
-      step('2단계: 프롬프트 생성 완료 ('+prompt.length+'자)');
-    } catch(e1) {
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ buildShortPrompt 오류: '+e1.message+'</div>';
-      return;
-    }
-
-    step('3단계: 인코딩 시작');
-    let encoded;
-    try {
-      encoded = encodeURIComponent(prompt);
-      step('4단계: 인코딩 완료 ('+encoded.length+'자)');
-    } catch(e2) {
-      let badInfo = '';
-      for(let i=0;i<prompt.length;i++){
-        try{ encodeURIComponent(prompt[i]); }
-        catch(e3){ badInfo += ' [pos:'+i+' char:'+prompt.charCodeAt(i)+']'; }
-      }
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ 인코딩 오류: '+e2.message+badInfo+'</div>';
-      return;
-    }
-
-    step('5단계: GAS 호출 중...');
-    let res;
-    try {
-      const url = GAS_URL + '?action=ai&prompt=' + encoded;
-      res = await fetch(url).then(r=>r.json());
-      step('6단계: GAS 응답 수신');
-    } catch(e4) {
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ GAS 호출 오류: '+e4.message+'</div>';
-      return;
-    }
+    const prompt = buildShortPrompt(type);
+    const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
+    const res = await fetch(url).then(r=>r.json());
 
     if(res.ok && res.text){
       contentEl.innerHTML = renderMarkdown(res.text);
     } else {
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ GAS 응답 오류: '+(res.error||JSON.stringify(res))+'</div>';
+      const errMsg = res.error || JSON.stringify(res);
+      const isPermErr = errMsg.includes('UrlFetchApp') || errMsg.includes('authorization') || errMsg.includes('permission') || errMsg.includes('권한');
+      if(isPermErr){
+        contentEl.innerHTML = '<div style="color:var(--red);padding:12px;line-height:1.8;font-size:12px">❌ GAS 권한 오류<br><strong>해결방법:</strong> Apps Script 편집기에서 <code>testAnthropicKey</code> 함수를 실행하여 UrlFetchApp 권한을 승인한 후 웹앱을 재배포해주세요.</div>';
+      } else {
+        contentEl.innerHTML = '<div style="color:var(--red);padding:8px;font-size:12px">❌ '+errMsg+'</div>';
+      }
     }
   }catch(e){
-    contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ 전체 오류: '+e.message+'</div>';
+    contentEl.innerHTML = '<div style="color:var(--red);padding:8px;font-size:12px">❌ 오류: '+e.message+'</div>';
   }finally{
     loadEl.style.display='none';
   }
