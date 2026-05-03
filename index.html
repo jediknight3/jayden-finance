@@ -1837,11 +1837,10 @@ body {
             Claude AI가 재훈님의 투자 데이터를 분석하여 맞춤형 재무 인사이트를 제공합니다.<br>⚠️ 참고용이며 투자 결정의 근거로 사용하지 마세요.
           </div>
           <div id="ai-setup-guide" style="background:#FFF9E6;border:1px solid #FFD700;border-radius:10px;padding:12px;margin-bottom:12px;font-size:11px;color:#856404;line-height:1.8">
-            <strong>📋 최초 설정 필요 (1회만)</strong><br>
-            1. <a href="https://console.anthropic.com" target="_blank" style="color:var(--primary)">console.anthropic.com</a> → API Keys → 키 발급<br>
-            2. Apps Script 편집기 → 프로젝트 설정 → 스크립트 속성<br>
-            3. 속성 추가: <code style="background:#fff;padding:1px 4px;border-radius:3px">ANTHROPIC_API_KEY</code> = 발급받은 키<br>
-            4. 설정탭 → 📋 복사 → Apps Script 코드 업데이트 후 재배포
+            <strong>📋 설정 방법 (1회만)</strong><br>
+            1. <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--primary)">console.anthropic.com</a> → API Keys → 키 발급<br>
+            2. ⚙️ 설정 탭 → <strong>AI 직접 연동</strong> → 키 붙여넣기 → 💾 저장<br>
+            3. 🧪 테스트 버튼으로 연결 확인
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <button onclick="genAIReport('monthly')" class="btn btn-primary">📊 이번달 리포트</button>
@@ -1880,6 +1879,28 @@ body {
       <div class="setting-row">
         <div><div class="setting-label">연동 상태</div></div>
         <div class="setting-value" id="conn-status">미설정</div>
+      </div>
+    </div>
+
+    <!-- AI API 키 직접 설정 -->
+    <div class="card">
+      <div style="padding:16px 20px 8px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">🤖 AI 직접 연동 (권장)</div>
+        <div style="font-size:11px;color:var(--sub);margin-bottom:12px">GAS 없이 브라우저에서 Claude AI를 직접 호출합니다.</div>
+        <input type="password" class="form-input" id="anthropic-key-input" placeholder="sk-ant-..." style="font-size:12px;margin-bottom:8px;letter-spacing:0.5px">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn btn-primary" style="flex:1" onclick="saveAnthropicKey()">💾 저장</button>
+          <button class="btn btn-ghost btn-sm" onclick="testAnthropicDirect()">🧪 테스트</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAnthropicKey()" style="color:var(--red)">🗑</button>
+        </div>
+        <div style="font-size:11px;color:var(--sub);line-height:1.6;background:var(--gray-50);border-radius:8px;padding:10px">
+          📌 발급: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--primary)">console.anthropic.com</a> → API Keys<br>
+          🔒 키는 이 기기에만 저장되며 외부로 전송되지 않습니다.
+        </div>
+      </div>
+      <div class="setting-row" style="border-top:1px solid var(--border)">
+        <div><div class="setting-label">AI 연동 상태</div></div>
+        <div class="setting-value" id="ai-key-status">미설정</div>
       </div>
     </div>
 
@@ -2139,6 +2160,21 @@ function getHeaders(sheetKey) {
   return map[sheetKey] || ['id','data'];
 }
 
+// ── UrlFetchApp 권한 승인용 — Apps Script 편집기에서 1회 실행 필요 ──
+function testAnthropicKey() {
+  const ANTHROPIC_KEY = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!ANTHROPIC_KEY) { Logger.log('❌ ANTHROPIC_API_KEY 속성이 없습니다.'); return; }
+  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+    payload: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:10, messages:[{role:'user',content:'hi'}] }),
+    muteHttpExceptions: true
+  });
+  Logger.log('응답코드: ' + res.getResponseCode());
+  Logger.log('✅ UrlFetchApp 권한 승인 완료! 웹앱을 재배포하세요.');
+}
+
 // ── 테스트: Apps Script 편집화면에서 testUpsert 선택 후 실행 ──
 function testUpsert() {
   const rec = {acct:'테스트',month:'2026-04',dep:100000,wd:0,depCum:100000,wdCum:0,curr:110000,depItems:[],wdItems:[]};
@@ -2200,6 +2236,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[] };
 let GAS_URL = '';
+let ANTHROPIC_KEY = '';
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
 function loadCache(){
@@ -2207,6 +2244,8 @@ function loadCache(){
 }
 function saveGasUrlLocal(){ try{ localStorage.setItem('jf_gas', GAS_URL); }catch(e){} }
 function loadGasUrlLocal(){ try{ GAS_URL=localStorage.getItem('jf_gas')||''; }catch(e){} }
+function saveAnthropicKeyLocal(){ try{ localStorage.setItem('jf_anthropic', ANTHROPIC_KEY); }catch(e){} }
+function loadAnthropicKeyLocal(){ try{ ANTHROPIC_KEY=localStorage.getItem('jf_anthropic')||''; }catch(e){} }
 
 // ── API ─────────────────────────────────────────────────
 function setLoading(on, msg=''){
@@ -3175,9 +3214,12 @@ function drawBarChart(el, labels, income, expense){
 // ═══════════════════════════════════════════════════════════
 // 🎯 목표 렌더
 // ═══════════════════════════════════════════════════════════
+let editingGoalId = null;
+
 function toggleGoalForm(){
   const f=document.getElementById('goal-form');
   if(f) f.style.display=f.style.display==='none'?'block':'none';
+  if(f&&f.style.display==='none') editingGoalId=null;
 }
 
 async function saveGoalEntry(){
@@ -3186,7 +3228,7 @@ async function saveGoalEntry(){
   const target=rawNum('goal-target');
   if(!target){showToast('목표 금액을 입력해주세요','warn');return;}
   const rec={
-    id:'goal_'+Date.now(),
+    id: editingGoalId || 'goal_'+Date.now(),
     name,
     type:document.getElementById('goal-type').value,
     targetAmount:target,
@@ -3195,18 +3237,20 @@ async function saveGoalEntry(){
     memo:document.getElementById('goal-memo').value,
   };
   await gasUpsert('goals',rec);
+  editingGoalId=null;
   // 폼 초기화
   ['goal-name','goal-memo','goal-date'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('goal-target').value='';
   document.getElementById('goal-current').value='';
-  toggleGoalForm();
+  const f=document.getElementById('goal-form');
+  if(f) f.style.display='none';
   renderAll();
   showToast('✅ 목표 저장 완료!','success');
 }
 
 function editGoalEntry(id){
   const r=(DB.goals||[]).find(g=>g.id===id); if(!r)return;
-  // 목표 폼 열기
+  editingGoalId=id;
   const form=document.getElementById('goal-form');
   if(form) form.style.display='block';
   document.getElementById('goal-name').value=r.name||'';
@@ -3215,10 +3259,6 @@ function editGoalEntry(id){
   setComma('goal-current',r.currentAmount);
   document.getElementById('goal-date').value=r.targetDate||'';
   document.getElementById('goal-memo').value=r.memo||'';
-  // 기존 항목 제거 (수정 후 재저장)
-  DB.goals=(DB.goals||[]).filter(g=>g.id!==id);
-  saveCache();
-  // 목표 페이지로 이동
   goPage('goals');
   window.scrollTo({top:0,behavior:'smooth'});
   showToast('📂 목표 불러옴 — 수정 후 저장','success');
@@ -3243,18 +3283,21 @@ function renderGoals(){
   const allGoals = [...autoGoals, ...DB.goals];
 
   const totalPct = allGoals.reduce((s,g)=>{
-    const pct=g.target?Math.min(g.current/g.target*100,100):0;
-    return s+pct;
+    const t=Number(g.targetAmount??g.target??0);
+    const c=Number(g.currentAmount??g.current??0);
+    return s+(t?Math.min(c/t*100,100):0);
   },0)/Math.max(allGoals.length,1);
 
   document.getElementById('goal-overall').textContent=(totalPct).toFixed(0)+'%';
 
   document.getElementById('goalsList').innerHTML = allGoals.map(g=>{
-    const pct=g.target?Math.min(g.current/g.target*100,100):0;
+    const target=Number(g.targetAmount??g.target??0);
+    const current=Number(g.currentAmount??g.current??0);
+    const pct=target?Math.min(current/target*100,100):0;
     const isRate=g.type==='수익률';
-    const cur=isRate?g.current.toFixed(1)+'%':fmtM(g.current);
+    const cur=isRate?current.toFixed(1)+'%':fmtM(current);
     const isAuto=!g.id; // 자동 목표는 수정/삭제 불가
-    const tgt=isRate?g.target+'%':fmtM(g.target);
+    const tgt=isRate?target+'%':fmtM(target);
     const col=pct>=100?'var(--green)':pct>=50?'var(--primary)':'var(--orange)';
     return `<div class="goal-card">
       <div class="goal-header">
@@ -3776,6 +3819,10 @@ function renderSettings(){
   if(st) st.textContent=GAS_URL?'🟢 연동됨':'🔴 미설정';
   const ta=document.getElementById('gs-code-area');
   if(ta) ta.value=GAS_CODE;
+  const ak=document.getElementById('anthropic-key-input');
+  if(ak&&!ak.value&&ANTHROPIC_KEY) ak.value=ANTHROPIC_KEY;
+  const aks=document.getElementById('ai-key-status');
+  if(aks) aks.textContent=ANTHROPIC_KEY?'🟢 직접 연동 활성':'🔴 미설정';
 }
 function saveGasUrl(){
   const url=document.getElementById('gas-url-input').value.trim();
@@ -3783,6 +3830,41 @@ function saveGasUrl(){
   GAS_URL=url; saveGasUrlLocal();
   showToast('✅ URL 저장 완료! 동기화 중...','success');
   syncAll();
+}
+function saveAnthropicKey(){
+  const key=document.getElementById('anthropic-key-input').value.trim();
+  if(!key){showToast('API 키를 입력해주세요','warn');return;}
+  if(!key.startsWith('sk-ant-')){showToast('올바른 Anthropic API 키 형식이 아닙니다 (sk-ant-...)','warn');return;}
+  ANTHROPIC_KEY=key; saveAnthropicKeyLocal();
+  renderSettings();
+  showToast('✅ AI API 키 저장 완료!','success');
+}
+function clearAnthropicKey(){
+  if(!confirm('AI API 키를 삭제할까요?'))return;
+  ANTHROPIC_KEY=''; saveAnthropicKeyLocal();
+  const ak=document.getElementById('anthropic-key-input');
+  if(ak) ak.value='';
+  renderSettings();
+  showToast('AI API 키가 삭제되었습니다','info');
+}
+async function testAnthropicDirect(){
+  if(!ANTHROPIC_KEY){showToast('먼저 API 키를 저장해주세요','warn');return;}
+  showToast('🧪 연결 테스트 중...','info');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':ANTHROPIC_KEY,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'hi'}]})
+    });
+    const data=await res.json();
+    if(res.ok) showToast('✅ AI 연결 성공!','success');
+    else showToast('❌ '+(data.error?.message||'API 오류'),'error');
+  }catch(e){ showToast('❌ 연결 실패: '+e.message,'error'); }
 }
 async function forceUploadInvInit(){
   if(!GAS_URL){showToast('먼저 URL을 설정해주세요','warn');return;}
@@ -4613,61 +4695,52 @@ async function genAIReport(type){
   const loadEl=document.getElementById('ai-report-loading');
   const contentEl=document.getElementById('ai-report-content');
   if(!loadEl||!contentEl) return;
-  if(!GAS_URL){
-    contentEl.textContent='⚠️ 설정 탭에서 Google Apps Script URL을 먼저 입력해주세요.';
+  if(!ANTHROPIC_KEY && !GAS_URL){
+    contentEl.innerHTML='<div style="color:var(--orange);padding:12px;line-height:1.8;font-size:12px">⚠️ AI를 사용하려면 설정 탭에서 Anthropic API 키를 입력해주세요.</div>';
     return;
   }
 
   loadEl.style.display='block';
   contentEl.innerHTML='';
 
-  // 단계별 실행 — 에러 위치 화면 표시
-  const step = (msg) => { contentEl.innerHTML += '<div style="font-size:11px;color:var(--sub);padding:2px 8px">'+msg+'</div>'; };
-
   try{
-    step('1단계: buildShortPrompt 시작');
-    let prompt;
-    try {
-      prompt = buildShortPrompt(type);
-      step('2단계: 프롬프트 생성 완료 ('+prompt.length+'자)');
-    } catch(e1) {
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ buildShortPrompt 오류: '+e1.message+'</div>';
-      return;
-    }
+    const prompt = buildShortPrompt(type);
+    let text = '';
 
-    step('3단계: 인코딩 시작');
-    let encoded;
-    try {
-      encoded = encodeURIComponent(prompt);
-      step('4단계: 인코딩 완료 ('+encoded.length+'자)');
-    } catch(e2) {
-      let badInfo = '';
-      for(let i=0;i<prompt.length;i++){
-        try{ encodeURIComponent(prompt[i]); }
-        catch(e3){ badInfo += ' [pos:'+i+' char:'+prompt.charCodeAt(i)+']'; }
-      }
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ 인코딩 오류: '+e2.message+badInfo+'</div>';
-      return;
-    }
-
-    step('5단계: GAS 호출 중...');
-    let res;
-    try {
-      const url = GAS_URL + '?action=ai&prompt=' + encoded;
-      res = await fetch(url).then(r=>r.json());
-      step('6단계: GAS 응답 수신');
-    } catch(e4) {
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ GAS 호출 오류: '+e4.message+'</div>';
-      return;
-    }
-
-    if(res.ok && res.text){
-      contentEl.innerHTML = renderMarkdown(res.text);
+    if(ANTHROPIC_KEY){
+      // 브라우저 직접 호출 (GAS 불필요)
+      const res = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':ANTHROPIC_KEY,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error?.message || 'API 오류 '+res.status);
+      text = data.content?.[0]?.text || '';
     } else {
-      contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ GAS 응답 오류: '+(res.error||JSON.stringify(res))+'</div>';
+      // GAS 프록시 fallback
+      const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
+      const res = await fetch(url).then(r=>r.json());
+      if(!res.ok){
+        const errMsg = res.error || JSON.stringify(res);
+        const isPermErr = errMsg.includes('UrlFetchApp') || errMsg.includes('authorization') || errMsg.includes('권한');
+        if(isPermErr){
+          contentEl.innerHTML = '<div style="color:var(--red);padding:12px;line-height:1.8;font-size:12px">❌ GAS 권한 오류<br>설정 탭에서 Anthropic API 키를 직접 입력하면 GAS 없이 바로 사용할 수 있습니다.</div>';
+          return;
+        }
+        throw new Error(errMsg);
+      }
+      text = res.text || '';
     }
+
+    contentEl.innerHTML = renderMarkdown(text);
   }catch(e){
-    contentEl.innerHTML += '<div style="color:var(--red);font-size:12px;padding:8px">❌ 전체 오류: '+e.message+'</div>';
+    contentEl.innerHTML = '<div style="color:var(--red);padding:8px;font-size:12px">❌ '+e.message+'</div>';
   }finally{
     loadEl.style.display='none';
   }
@@ -4679,6 +4752,7 @@ async function genAIReport(type){
 // ═══════════════════════════════════════════════════════════
 async function init(){
   loadGasUrlLocal();
+  loadAnthropicKeyLocal();
   loadCache();
 
   // 캐시 없으면 초기 투자 데이터 로드
