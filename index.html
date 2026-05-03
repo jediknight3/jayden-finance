@@ -3214,9 +3214,12 @@ function drawBarChart(el, labels, income, expense){
 // ═══════════════════════════════════════════════════════════
 // 🎯 목표 렌더
 // ═══════════════════════════════════════════════════════════
+let editingGoalId = null;
+
 function toggleGoalForm(){
   const f=document.getElementById('goal-form');
   if(f) f.style.display=f.style.display==='none'?'block':'none';
+  if(f&&f.style.display==='none') editingGoalId=null;
 }
 
 async function saveGoalEntry(){
@@ -3225,7 +3228,7 @@ async function saveGoalEntry(){
   const target=rawNum('goal-target');
   if(!target){showToast('목표 금액을 입력해주세요','warn');return;}
   const rec={
-    id:'goal_'+Date.now(),
+    id: editingGoalId || 'goal_'+Date.now(),
     name,
     type:document.getElementById('goal-type').value,
     targetAmount:target,
@@ -3234,18 +3237,20 @@ async function saveGoalEntry(){
     memo:document.getElementById('goal-memo').value,
   };
   await gasUpsert('goals',rec);
+  editingGoalId=null;
   // 폼 초기화
   ['goal-name','goal-memo','goal-date'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('goal-target').value='';
   document.getElementById('goal-current').value='';
-  toggleGoalForm();
+  const f=document.getElementById('goal-form');
+  if(f) f.style.display='none';
   renderAll();
   showToast('✅ 목표 저장 완료!','success');
 }
 
 function editGoalEntry(id){
   const r=(DB.goals||[]).find(g=>g.id===id); if(!r)return;
-  // 목표 폼 열기
+  editingGoalId=id;
   const form=document.getElementById('goal-form');
   if(form) form.style.display='block';
   document.getElementById('goal-name').value=r.name||'';
@@ -3254,10 +3259,6 @@ function editGoalEntry(id){
   setComma('goal-current',r.currentAmount);
   document.getElementById('goal-date').value=r.targetDate||'';
   document.getElementById('goal-memo').value=r.memo||'';
-  // 기존 항목 제거 (수정 후 재저장)
-  DB.goals=(DB.goals||[]).filter(g=>g.id!==id);
-  saveCache();
-  // 목표 페이지로 이동
   goPage('goals');
   window.scrollTo({top:0,behavior:'smooth'});
   showToast('📂 목표 불러옴 — 수정 후 저장','success');
@@ -3282,18 +3283,21 @@ function renderGoals(){
   const allGoals = [...autoGoals, ...DB.goals];
 
   const totalPct = allGoals.reduce((s,g)=>{
-    const pct=g.target?Math.min(g.current/g.target*100,100):0;
-    return s+pct;
+    const t=Number(g.targetAmount??g.target??0);
+    const c=Number(g.currentAmount??g.current??0);
+    return s+(t?Math.min(c/t*100,100):0);
   },0)/Math.max(allGoals.length,1);
 
   document.getElementById('goal-overall').textContent=(totalPct).toFixed(0)+'%';
 
   document.getElementById('goalsList').innerHTML = allGoals.map(g=>{
-    const pct=g.target?Math.min(g.current/g.target*100,100):0;
+    const target=Number(g.targetAmount??g.target??0);
+    const current=Number(g.currentAmount??g.current??0);
+    const pct=target?Math.min(current/target*100,100):0;
     const isRate=g.type==='수익률';
-    const cur=isRate?g.current.toFixed(1)+'%':fmtM(g.current);
+    const cur=isRate?current.toFixed(1)+'%':fmtM(current);
     const isAuto=!g.id; // 자동 목표는 수정/삭제 불가
-    const tgt=isRate?g.target+'%':fmtM(g.target);
+    const tgt=isRate?target+'%':fmtM(target);
     const col=pct>=100?'var(--green)':pct>=50?'var(--primary)':'var(--orange)';
     return `<div class="goal-card">
       <div class="goal-header">
