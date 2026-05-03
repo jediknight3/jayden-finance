@@ -81,45 +81,82 @@ body {
 .hdr-sync:active { background: var(--gray-200); }
 .sync-badge { font-size: 11px; font-weight: 700; background: var(--primary); color: #fff; padding: 4px 10px; border-radius: 20px; }
 
-/* ── 바텀 탭 네비게이션 (모바일 기본) ── */
-.bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
+/* ── 슬림 바 (모바일 햄버거) ── */
+#bottom-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: calc(54px + env(safe-area-inset-bottom));
+  padding: 0 16px env(safe-area-inset-bottom);
   background: var(--white);
   border-top: 1px solid var(--gray-200);
-  display: flex;
-  flex-direction: row;
-  z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 200; box-sizing: border-box;
+}
+#nav-cur {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1; cursor: pointer; padding: 6px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+#nav-cur-icon { font-size: 22px; line-height: 1; }
+#nav-cur-label { font-size: 16px; font-weight: 700; color: var(--text); }
+#nav-hamburger {
+  width: 44px; height: 44px; border: none;
+  background: var(--gray-100); border-radius: 12px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 5px; cursor: pointer; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.ham-line { width: 18px; height: 2px; background: var(--gray-700); border-radius: 1px; }
+
+/* ── 딤 오버레이 ── */
+#nav-dim {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 340; display: none; opacity: 0;
+  transition: opacity .25s;
+}
+#nav-dim.show { display: block; opacity: 1; }
+
+/* ── 바텀 시트 (메뉴) ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--white);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 32px rgba(0,0,0,.12);
+  z-index: 350;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
   padding-bottom: env(safe-area-inset-bottom);
 }
-.nav-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 4px 8px;
-  cursor: pointer;
-  color: var(--gray-400);
-  font-size: 10px;
-  font-weight: 500;
-  gap: 4px;
-  transition: all .15s;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  border-radius: 0;
-  background: none;
+.bottom-nav.sheet-open { transform: translateY(0); }
+#nav-sheet-handle {
+  width: 36px; height: 4px; background: var(--gray-300);
+  border-radius: 2px; margin: 12px auto 14px;
 }
-.nav-item.active { color: var(--primary); }
-.nav-icon { font-size: 22px; line-height: 1; }
-.nav-label { font-size: 10px; font-weight: 600; }
+#nav-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 6px; padding: 0 12px 20px;
+}
+.nav-item {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 14px 6px; gap: 6px;
+  cursor: pointer; border-radius: 14px;
+  color: var(--gray-500); font-size: 11px; font-weight: 600;
+  transition: all .15s; background: var(--gray-50);
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.nav-item.active { color: var(--primary); background: var(--primary-l); }
+.nav-item:active { opacity: .7; }
+.nav-icon { font-size: 26px; line-height: 1; }
+.nav-label { font-size: 11px; font-weight: 600; }
 
 /* ── 메인 컨텐츠 ── */
 .main {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 0 0 90px; /* 바텀탭 60px + 여유 30px */
+  padding: 0 0 calc(54px + env(safe-area-inset-bottom) + 24px);
   box-sizing: border-box;
 }
 .page { display: none; }
@@ -336,7 +373,7 @@ body {
   100% { left: 110%; width: 35%; }
 }
 #save-indicator {
-  position: fixed; bottom: calc(60px + env(safe-area-inset-bottom) + 12px);
+  position: fixed; bottom: calc(54px + env(safe-area-inset-bottom) + 12px);
   left: 50%; transform: translateX(-50%);
   background: var(--gray-800); color: #fff;
   padding: 7px 16px; border-radius: 20px;
@@ -1970,38 +2007,58 @@ body {
 </div><!-- /main -->
 
 <!-- 바텀 네비게이션 -->
+<!-- 슬림 바 (모바일) -->
+<div id="bottom-bar">
+  <div id="nav-cur" onclick="openNavSheet()">
+    <span id="nav-cur-icon">🏠</span>
+    <span id="nav-cur-label">홈</span>
+  </div>
+  <button id="nav-hamburger" onclick="openNavSheet()" aria-label="메뉴">
+    <div class="ham-line"></div>
+    <div class="ham-line"></div>
+    <div class="ham-line"></div>
+  </button>
+</div>
+
+<!-- 딤 오버레이 -->
+<div id="nav-dim" onclick="closeNavSheet()"></div>
+
+<!-- 바텀 시트 메뉴 -->
 <nav class="bottom-nav">
-  <div class="nav-item active" onclick="goPage('home')" id="nav-home">
-    <div class="nav-icon">🏠</div>
-    <div class="nav-label">홈</div>
-  </div>
-  <div class="nav-item" onclick="goPage('assets')" id="nav-assets">
-    <div class="nav-icon">💰</div>
-    <div class="nav-label">자산</div>
-  </div>
-  <div class="nav-item" onclick="goPage('debt')" id="nav-debt">
-    <div class="nav-icon">🏦</div>
-    <div class="nav-label">부채</div>
-  </div>
-  <div class="nav-item" onclick="goPage('cashflow')" id="nav-cashflow">
-    <div class="nav-icon">💳</div>
-    <div class="nav-label">현금흐름</div>
-  </div>
-  <div class="nav-item" onclick="goPage('goals')" id="nav-goals">
-    <div class="nav-icon">🎯</div>
-    <div class="nav-label">목표</div>
-  </div>
-  <div class="nav-item" onclick="goPage('input')" id="nav-input">
-    <div class="nav-icon">✏️</div>
-    <div class="nav-label">입력</div>
-  </div>
-  <div class="nav-item" onclick="goPage('analysis')" id="nav-analysis">
-    <div class="nav-icon">🔬</div>
-    <div class="nav-label">분석</div>
-  </div>
-  <div class="nav-item" onclick="goPage('settings')" id="nav-settings">
-    <div class="nav-icon">⚙️</div>
-    <div class="nav-label">설정</div>
+  <div id="nav-sheet-handle"></div>
+  <div id="nav-grid">
+    <div class="nav-item active" onclick="goPage('home');closeNavSheet()" id="nav-home">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">홈</div>
+    </div>
+    <div class="nav-item" onclick="goPage('assets');closeNavSheet()" id="nav-assets">
+      <div class="nav-icon">💰</div>
+      <div class="nav-label">자산</div>
+    </div>
+    <div class="nav-item" onclick="goPage('debt');closeNavSheet()" id="nav-debt">
+      <div class="nav-icon">🏦</div>
+      <div class="nav-label">부채</div>
+    </div>
+    <div class="nav-item" onclick="goPage('cashflow');closeNavSheet()" id="nav-cashflow">
+      <div class="nav-icon">💳</div>
+      <div class="nav-label">현금흐름</div>
+    </div>
+    <div class="nav-item" onclick="goPage('goals');closeNavSheet()" id="nav-goals">
+      <div class="nav-icon">🎯</div>
+      <div class="nav-label">목표</div>
+    </div>
+    <div class="nav-item" onclick="goPage('input');closeNavSheet()" id="nav-input">
+      <div class="nav-icon">✏️</div>
+      <div class="nav-label">입력</div>
+    </div>
+    <div class="nav-item" onclick="goPage('analysis');closeNavSheet()" id="nav-analysis">
+      <div class="nav-icon">🔬</div>
+      <div class="nav-label">분석</div>
+    </div>
+    <div class="nav-item" onclick="goPage('settings');closeNavSheet()" id="nav-settings">
+      <div class="nav-icon">⚙️</div>
+      <div class="nav-label">설정</div>
+    </div>
   </div>
 </nav>
 
@@ -2401,6 +2458,27 @@ function bindComma(id,cb){
 // ── 네비게이션 ───────────────────────────────────────────
 let curPage='home';
 
+const PAGE_META = {
+  home:     {icon:'🏠', label:'홈'},
+  assets:   {icon:'💰', label:'자산'},
+  debt:     {icon:'🏦', label:'부채'},
+  cashflow: {icon:'💳', label:'현금흐름'},
+  goals:    {icon:'🎯', label:'목표'},
+  input:    {icon:'✏️', label:'입력'},
+  analysis: {icon:'🔬', label:'분석'},
+  settings: {icon:'⚙️', label:'설정'},
+};
+
+function openNavSheet(){
+  document.querySelector('.bottom-nav')?.classList.add('sheet-open');
+  const dim = document.getElementById('nav-dim');
+  if(dim){ dim.style.display='block'; requestAnimationFrame(()=>dim.classList.add('show')); }
+}
+function closeNavSheet(){
+  document.querySelector('.bottom-nav')?.classList.remove('sheet-open');
+  const dim = document.getElementById('nav-dim');
+  if(dim){ dim.classList.remove('show'); setTimeout(()=>{ if(!dim.classList.contains('show')) dim.style.display='none'; },260); }
+}
 
 function goPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -2408,6 +2486,13 @@ function goPage(id){
   document.getElementById('page-'+id)?.classList.add('active');
   document.getElementById('nav-'+id)?.classList.add('active');
   curPage=id;
+  const meta = PAGE_META[id];
+  if(meta){
+    const iconEl = document.getElementById('nav-cur-icon');
+    const lblEl  = document.getElementById('nav-cur-label');
+    if(iconEl) iconEl.textContent = meta.icon;
+    if(lblEl)  lblEl.textContent  = meta.label;
+  }
   renderPage(id);
   setTimeout(applyLayout, 10);
 }
@@ -4878,18 +4963,25 @@ init();
 function applyLayout(){
   const w = window.innerWidth;
   const nav = document.querySelector('.bottom-nav');
+  const bar = document.getElementById('bottom-bar');
   if(!nav) return;
 
   if(w >= 1024){
+    // 데스크탑: 슬림 바 숨기고, 바텀 시트를 사이드바로 전환
+    if(bar) bar.style.display = 'none';
+    closeNavSheet();
     Object.assign(nav.style, {
       position:'fixed', top:'56px', left:'0', bottom:'0', right:'auto',
       width:'220px', maxWidth:'220px', flexDirection:'column',
       borderTop:'none', borderRight:'1px solid #E5E8EB',
-      borderRadius:'0', padding:'16px 0', transform:'none',
+      borderRadius:'0', padding:'16px 0',
+      transform:'none', transition:'none',
       background:'#fff', boxShadow:'1px 0 8px rgba(0,0,0,.04)',
       overflowY:'auto', overflowX:'hidden', alignItems:'stretch',
       display:'flex', zIndex:'200', height:'calc(100vh - 56px)',
     });
+    document.getElementById('nav-sheet-handle').style.display = 'none';
+    document.getElementById('nav-grid').style.cssText = 'display:block; padding:0';
     document.querySelectorAll('.nav-item').forEach(el=>{
       const a = el.classList.contains('active');
       Object.assign(el.style, {
@@ -4902,28 +4994,15 @@ function applyLayout(){
     });
     document.querySelectorAll('.nav-icon').forEach(el=>el.style.fontSize='20px');
     document.querySelectorAll('.nav-label').forEach(el=>{ el.style.fontSize='14px'; el.style.fontWeight='600'; });
-    // page-inner padding: CSS @media로 처리
   } else {
-    Object.assign(nav.style, {
-      position:'fixed', bottom:'0', left:'0', right:'0', top:'auto',
-      flexDirection:'row', borderTop:'1px solid #E5E8EB', borderRight:'none',
-      borderRadius:'0', padding:'0', paddingBottom:'env(safe-area-inset-bottom)',
-      transform:'none', width:'100%', maxWidth:'100%', background:'#fff',
-      display:'flex', zIndex:'200', height:'60px', alignItems:'stretch',
-    });
-    document.querySelectorAll('.nav-item').forEach(el=>{
-      const a = el.classList.contains('active');
-      Object.assign(el.style, {
-        flex:'1', flexDirection:'column', justifyContent:'center',
-        alignItems:'center', padding:'8px 4px', gap:'3px',
-        borderRadius:'0', margin:'0', fontSize:'10px',
-        cursor:'pointer', color:a?'#3182F6':'#B0B8C1',
-        background:'transparent', display:'flex',
-      });
-    });
-    document.querySelectorAll('.nav-icon').forEach(el=>el.style.fontSize='22px');
-    document.querySelectorAll('.nav-label').forEach(el=>{ el.style.fontSize='10px'; el.style.fontWeight='600'; });
-    // page-inner padding: CSS @media로 처리
+    // 모바일: 슬림 바 + 바텀 시트 모드
+    if(bar) bar.style.display = 'flex';
+    nav.removeAttribute('style');
+    document.getElementById('nav-sheet-handle').style.display = '';
+    document.getElementById('nav-grid').style.cssText = '';
+    document.querySelectorAll('.nav-item').forEach(el=>el.removeAttribute('style'));
+    document.querySelectorAll('.nav-icon').forEach(el=>el.style.fontSize='');
+    document.querySelectorAll('.nav-label').forEach(el=>el.style.fontSize='');
   }
 }
 
