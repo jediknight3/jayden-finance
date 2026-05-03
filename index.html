@@ -1837,12 +1837,10 @@ body {
             Claude AI가 재훈님의 투자 데이터를 분석하여 맞춤형 재무 인사이트를 제공합니다.<br>⚠️ 참고용이며 투자 결정의 근거로 사용하지 마세요.
           </div>
           <div id="ai-setup-guide" style="background:#FFF9E6;border:1px solid #FFD700;border-radius:10px;padding:12px;margin-bottom:12px;font-size:11px;color:#856404;line-height:1.8">
-            <strong>📋 최초 설정 필요 (1회만)</strong><br>
-            1. <a href="https://console.anthropic.com" target="_blank" style="color:var(--primary)">console.anthropic.com</a> → API Keys → 키 발급<br>
-            2. Apps Script 편집기 → 프로젝트 설정 → 스크립트 속성<br>
-            3. 속성 추가: <code style="background:#fff;padding:1px 4px;border-radius:3px">ANTHROPIC_API_KEY</code> = 발급받은 키<br>
-            4. 설정탭 → 📋 복사 → Apps Script 코드 업데이트 후 재배포<br>
-            5. Apps Script 편집기에서 <code style="background:#fff;padding:1px 4px;border-radius:3px">testAnthropicKey</code> 함수 실행 → 권한 승인 → 웹앱 재배포
+            <strong>📋 설정 방법 (1회만)</strong><br>
+            1. <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--primary)">console.anthropic.com</a> → API Keys → 키 발급<br>
+            2. ⚙️ 설정 탭 → <strong>AI 직접 연동</strong> → 키 붙여넣기 → 💾 저장<br>
+            3. 🧪 테스트 버튼으로 연결 확인
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <button onclick="genAIReport('monthly')" class="btn btn-primary">📊 이번달 리포트</button>
@@ -1881,6 +1879,28 @@ body {
       <div class="setting-row">
         <div><div class="setting-label">연동 상태</div></div>
         <div class="setting-value" id="conn-status">미설정</div>
+      </div>
+    </div>
+
+    <!-- AI API 키 직접 설정 -->
+    <div class="card">
+      <div style="padding:16px 20px 8px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">🤖 AI 직접 연동 (권장)</div>
+        <div style="font-size:11px;color:var(--sub);margin-bottom:12px">GAS 없이 브라우저에서 Claude AI를 직접 호출합니다.</div>
+        <input type="password" class="form-input" id="anthropic-key-input" placeholder="sk-ant-..." style="font-size:12px;margin-bottom:8px;letter-spacing:0.5px">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn btn-primary" style="flex:1" onclick="saveAnthropicKey()">💾 저장</button>
+          <button class="btn btn-ghost btn-sm" onclick="testAnthropicDirect()">🧪 테스트</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAnthropicKey()" style="color:var(--red)">🗑</button>
+        </div>
+        <div style="font-size:11px;color:var(--sub);line-height:1.6;background:var(--gray-50);border-radius:8px;padding:10px">
+          📌 발급: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--primary)">console.anthropic.com</a> → API Keys<br>
+          🔒 키는 이 기기에만 저장되며 외부로 전송되지 않습니다.
+        </div>
+      </div>
+      <div class="setting-row" style="border-top:1px solid var(--border)">
+        <div><div class="setting-label">AI 연동 상태</div></div>
+        <div class="setting-value" id="ai-key-status">미설정</div>
       </div>
     </div>
 
@@ -2216,6 +2236,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[] };
 let GAS_URL = '';
+let ANTHROPIC_KEY = '';
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
 function loadCache(){
@@ -2223,6 +2244,8 @@ function loadCache(){
 }
 function saveGasUrlLocal(){ try{ localStorage.setItem('jf_gas', GAS_URL); }catch(e){} }
 function loadGasUrlLocal(){ try{ GAS_URL=localStorage.getItem('jf_gas')||''; }catch(e){} }
+function saveAnthropicKeyLocal(){ try{ localStorage.setItem('jf_anthropic', ANTHROPIC_KEY); }catch(e){} }
+function loadAnthropicKeyLocal(){ try{ ANTHROPIC_KEY=localStorage.getItem('jf_anthropic')||''; }catch(e){} }
 
 // ── API ─────────────────────────────────────────────────
 function setLoading(on, msg=''){
@@ -3792,6 +3815,10 @@ function renderSettings(){
   if(st) st.textContent=GAS_URL?'🟢 연동됨':'🔴 미설정';
   const ta=document.getElementById('gs-code-area');
   if(ta) ta.value=GAS_CODE;
+  const ak=document.getElementById('anthropic-key-input');
+  if(ak&&!ak.value&&ANTHROPIC_KEY) ak.value=ANTHROPIC_KEY;
+  const aks=document.getElementById('ai-key-status');
+  if(aks) aks.textContent=ANTHROPIC_KEY?'🟢 직접 연동 활성':'🔴 미설정';
 }
 function saveGasUrl(){
   const url=document.getElementById('gas-url-input').value.trim();
@@ -3799,6 +3826,41 @@ function saveGasUrl(){
   GAS_URL=url; saveGasUrlLocal();
   showToast('✅ URL 저장 완료! 동기화 중...','success');
   syncAll();
+}
+function saveAnthropicKey(){
+  const key=document.getElementById('anthropic-key-input').value.trim();
+  if(!key){showToast('API 키를 입력해주세요','warn');return;}
+  if(!key.startsWith('sk-ant-')){showToast('올바른 Anthropic API 키 형식이 아닙니다 (sk-ant-...)','warn');return;}
+  ANTHROPIC_KEY=key; saveAnthropicKeyLocal();
+  renderSettings();
+  showToast('✅ AI API 키 저장 완료!','success');
+}
+function clearAnthropicKey(){
+  if(!confirm('AI API 키를 삭제할까요?'))return;
+  ANTHROPIC_KEY=''; saveAnthropicKeyLocal();
+  const ak=document.getElementById('anthropic-key-input');
+  if(ak) ak.value='';
+  renderSettings();
+  showToast('AI API 키가 삭제되었습니다','info');
+}
+async function testAnthropicDirect(){
+  if(!ANTHROPIC_KEY){showToast('먼저 API 키를 저장해주세요','warn');return;}
+  showToast('🧪 연결 테스트 중...','info');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':ANTHROPIC_KEY,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'hi'}]})
+    });
+    const data=await res.json();
+    if(res.ok) showToast('✅ AI 연결 성공!','success');
+    else showToast('❌ '+(data.error?.message||'API 오류'),'error');
+  }catch(e){ showToast('❌ 연결 실패: '+e.message,'error'); }
 }
 async function forceUploadInvInit(){
   if(!GAS_URL){showToast('먼저 URL을 설정해주세요','warn');return;}
@@ -4629,8 +4691,8 @@ async function genAIReport(type){
   const loadEl=document.getElementById('ai-report-loading');
   const contentEl=document.getElementById('ai-report-content');
   if(!loadEl||!contentEl) return;
-  if(!GAS_URL){
-    contentEl.innerHTML='<div style="color:var(--orange);padding:8px">⚠️ 설정 탭에서 Google Apps Script URL을 먼저 입력해주세요.</div>';
+  if(!ANTHROPIC_KEY && !GAS_URL){
+    contentEl.innerHTML='<div style="color:var(--orange);padding:12px;line-height:1.8;font-size:12px">⚠️ AI를 사용하려면 설정 탭에서 Anthropic API 키를 입력해주세요.</div>';
     return;
   }
 
@@ -4639,22 +4701,42 @@ async function genAIReport(type){
 
   try{
     const prompt = buildShortPrompt(type);
-    const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
-    const res = await fetch(url).then(r=>r.json());
+    let text = '';
 
-    if(res.ok && res.text){
-      contentEl.innerHTML = renderMarkdown(res.text);
+    if(ANTHROPIC_KEY){
+      // 브라우저 직접 호출 (GAS 불필요)
+      const res = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':ANTHROPIC_KEY,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error?.message || 'API 오류 '+res.status);
+      text = data.content?.[0]?.text || '';
     } else {
-      const errMsg = res.error || JSON.stringify(res);
-      const isPermErr = errMsg.includes('UrlFetchApp') || errMsg.includes('authorization') || errMsg.includes('permission') || errMsg.includes('권한');
-      if(isPermErr){
-        contentEl.innerHTML = '<div style="color:var(--red);padding:12px;line-height:1.8;font-size:12px">❌ GAS 권한 오류<br><strong>해결방법:</strong> Apps Script 편집기에서 <code>testAnthropicKey</code> 함수를 실행하여 UrlFetchApp 권한을 승인한 후 웹앱을 재배포해주세요.</div>';
-      } else {
-        contentEl.innerHTML = '<div style="color:var(--red);padding:8px;font-size:12px">❌ '+errMsg+'</div>';
+      // GAS 프록시 fallback
+      const url = GAS_URL + '?action=ai&prompt=' + encodeURIComponent(prompt);
+      const res = await fetch(url).then(r=>r.json());
+      if(!res.ok){
+        const errMsg = res.error || JSON.stringify(res);
+        const isPermErr = errMsg.includes('UrlFetchApp') || errMsg.includes('authorization') || errMsg.includes('권한');
+        if(isPermErr){
+          contentEl.innerHTML = '<div style="color:var(--red);padding:12px;line-height:1.8;font-size:12px">❌ GAS 권한 오류<br>설정 탭에서 Anthropic API 키를 직접 입력하면 GAS 없이 바로 사용할 수 있습니다.</div>';
+          return;
+        }
+        throw new Error(errMsg);
       }
+      text = res.text || '';
     }
+
+    contentEl.innerHTML = renderMarkdown(text);
   }catch(e){
-    contentEl.innerHTML = '<div style="color:var(--red);padding:8px;font-size:12px">❌ 오류: '+e.message+'</div>';
+    contentEl.innerHTML = '<div style="color:var(--red);padding:8px;font-size:12px">❌ '+e.message+'</div>';
   }finally{
     loadEl.style.display='none';
   }
@@ -4666,6 +4748,7 @@ async function genAIReport(type){
 // ═══════════════════════════════════════════════════════════
 async function init(){
   loadGasUrlLocal();
+  loadAnthropicKeyLocal();
   loadCache();
 
   // 캐시 없으면 초기 투자 데이터 로드
