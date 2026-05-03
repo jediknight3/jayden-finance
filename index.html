@@ -81,32 +81,8 @@ body {
 .hdr-sync:active { background: var(--gray-200); }
 .sync-badge { font-size: 11px; font-weight: 700; background: var(--primary); color: #fff; padding: 4px 10px; border-radius: 20px; }
 
-/* ── 슬림 바 (모바일 햄버거) ── */
-#bottom-bar {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  height: calc(54px + env(safe-area-inset-bottom));
-  padding: 0 16px env(safe-area-inset-bottom);
-  background: var(--white);
-  border-top: 1px solid var(--gray-200);
-  display: flex; align-items: center; justify-content: space-between;
-  z-index: 200; box-sizing: border-box;
-}
-#nav-cur {
-  display: flex; align-items: center; gap: 10px;
-  flex: 1; cursor: pointer; padding: 6px 0;
-  -webkit-tap-highlight-color: transparent;
-}
-#nav-cur-icon { font-size: 22px; line-height: 1; }
-#nav-cur-label { font-size: 16px; font-weight: 700; color: var(--text); }
-#nav-hamburger {
-  width: 44px; height: 44px; border: none;
-  background: var(--gray-100); border-radius: 12px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 5px; cursor: pointer; flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-.ham-line { width: 18px; height: 2px; background: var(--gray-700); border-radius: 1px; }
+/* 데스크탑에서 헤더 햄버거 숨김 (사이드바 있으므로) */
+@media (min-width: 1024px) { #hdr-hamburger { display: none !important; } }
 
 /* ── 딤 오버레이 ── */
 #nav-dim {
@@ -156,7 +132,7 @@ body {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 0 0 calc(54px + env(safe-area-inset-bottom) + 24px);
+  padding: 0 0 40px;
   box-sizing: border-box;
 }
 .page { display: none; }
@@ -373,7 +349,7 @@ body {
   100% { left: 110%; width: 35%; }
 }
 #save-indicator {
-  position: fixed; bottom: calc(54px + env(safe-area-inset-bottom) + 12px);
+  position: fixed; bottom: 24px;
   left: 50%; transform: translateX(-50%);
   background: var(--gray-800); color: #fff;
   padding: 7px 16px; border-radius: 20px;
@@ -571,6 +547,7 @@ body {
       <span id="syncMsg" style="font-size:11px;color:var(--sub)"></span>
     </div>
     <button class="hdr-sync" onclick="syncAll()" title="동기화">🔄</button>
+    <button class="hdr-sync" id="hdr-hamburger" onclick="openNavSheet()" title="메뉴" style="font-size:18px;font-weight:700;letter-spacing:-1px">≡</button>
   </div>
 </div>
 
@@ -2007,19 +1984,6 @@ body {
 </div><!-- /main -->
 
 <!-- 바텀 네비게이션 -->
-<!-- 슬림 바 (모바일) -->
-<div id="bottom-bar">
-  <div id="nav-cur" onclick="openNavSheet()">
-    <span id="nav-cur-icon">🏠</span>
-    <span id="nav-cur-label">홈</span>
-  </div>
-  <button id="nav-hamburger" onclick="openNavSheet()" aria-label="메뉴">
-    <div class="ham-line"></div>
-    <div class="ham-line"></div>
-    <div class="ham-line"></div>
-  </button>
-</div>
-
 <!-- 딤 오버레이 -->
 <div id="nav-dim" onclick="closeNavSheet()"></div>
 
@@ -2652,7 +2616,7 @@ function renderHomeChart(){
 }
 
 function drawLineChart(el, labels, data, color, unit, baseline){
-  const W=300, H=130, PL=44, PR=8, PT=12, PB=24;
+  const W=300, H=130, PL=44, PR=20, PT=12, PB=24;
   const cW=W-PL-PR, cH=H-PT-PB;
   if(data.length<2){el.innerHTML='';return;}
 
@@ -2669,7 +2633,9 @@ function drawLineChart(el, labels, data, color, unit, baseline){
 
   const step=Math.max(1,Math.floor(data.length/5));
   const xLbls=pts.filter((_,i)=>i%step===0||i===pts.length-1).map(p=>{
-    const s=fmtMo(p.mo); return `<text x="${p.x.toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="8" fill="#8B95A1">${s.slice(2,4)}/${s.slice(5,7)}</text>`;
+    const mo=String(p.mo).slice(0,7); const lbl=mo.slice(2,4)+'/'+mo.slice(5,7);
+    const anchor=p===pts[pts.length-1]?'end':p===pts[0]?'start':'middle';
+    return `<text x="${p.x.toFixed(1)}" y="${H-2}" text-anchor="${anchor}" font-size="8" fill="#8B95A1">${lbl}</text>`;
   }).join('');
 
   const yVals=[minV,(minV+maxV)/2,maxV];
@@ -4963,12 +4929,10 @@ init();
 function applyLayout(){
   const w = window.innerWidth;
   const nav = document.querySelector('.bottom-nav');
-  const bar = document.getElementById('bottom-bar');
   if(!nav) return;
 
   if(w >= 1024){
-    // 데스크탑: 슬림 바 숨기고, 바텀 시트를 사이드바로 전환
-    if(bar) bar.style.display = 'none';
+    // 데스크탑: 바텀 시트를 사이드바로 전환
     closeNavSheet();
     Object.assign(nav.style, {
       position:'fixed', top:'56px', left:'0', bottom:'0', right:'auto',
@@ -4995,8 +4959,7 @@ function applyLayout(){
     document.querySelectorAll('.nav-icon').forEach(el=>el.style.fontSize='20px');
     document.querySelectorAll('.nav-label').forEach(el=>{ el.style.fontSize='14px'; el.style.fontWeight='600'; });
   } else {
-    // 모바일: 슬림 바 + 바텀 시트 모드
-    if(bar) bar.style.display = 'flex';
+    // 모바일: 바텀 시트 모드
     nav.removeAttribute('style');
     document.getElementById('nav-sheet-handle').style.display = '';
     document.getElementById('nav-grid').style.cssText = '';
