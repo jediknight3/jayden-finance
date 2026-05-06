@@ -3663,7 +3663,12 @@ function calcInvPreview(){
 
   const sameType = invMode==='week' ? isWeekPeriod : isMonthPeriod;
   const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period).sort((a,b)=>a.month.localeCompare(b.month));
-  const prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
+  let prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
+  // 주별 첫 입력이면 월별 마지막 레코드에서 누적값 상속
+  if(!prevLast&&invMode==='week'){
+    const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+    prevLast=mRows.length?mRows[mRows.length-1]:null;
+  }
   const prevDep=prevLast?prevLast.depCum||0:0, prevWd=prevLast?prevLast.wdCum||0:0;
   const depCum=prevDep+dep, wdCum=prevWd+wd;
   const prin=depCum-wdCum, pnl=curr-prin, rate=prin?pnl/prin:0;
@@ -3692,7 +3697,12 @@ async function saveInvEntry(){
   const sameType = invMode==='week' ? isWeekPeriod : isMonthPeriod;
   const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period)
     .sort((a,b)=>a.month.localeCompare(b.month));
-  const prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
+  let prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
+  // 주별 첫 입력이면 월별 마지막 레코드에서 누적값 상속
+  if(!prevLast&&invMode==='week'){
+    const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+    prevLast=mRows.length?mRows[mRows.length-1]:null;
+  }
   const depCum=(prevLast?prevLast.depCum||0:0)+dep;
   const wdCum=(prevLast?prevLast.wdCum||0:0)+wd;
   const rec={acct,month:period,dep,wd,depCum,wdCum,curr,
