@@ -754,9 +754,16 @@ body {
       </div>
     </div>
 
-    <!-- 월별추이 -->
+    <!-- 월별/주별 추이 -->
     <div id="inv-sub-monthly" style="display:none">
       <div class="section">
+        <!-- 월별/주별 뷰 토글 -->
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="btnViewMonth" onclick="setInvView('month')"
+            style="flex:1;border:none;padding:8px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">📅 월별</button>
+          <button id="btnViewWeek" onclick="setInvView('week')"
+            style="flex:1;border:none;padding:8px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">🗓 주별</button>
+        </div>
         <!-- KPI -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div class="card" style="padding:14px">
@@ -776,12 +783,13 @@ body {
           </div>
           <div id="invTrendChart"></div>
         </div>
-        <!-- 월별 전체 합계 테이블 -->
+        <!-- 합계 테이블 -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">월별 전체 합계</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)" id="inv-table-title">월별 전체 합계</div>
           <button onclick="exportInvCSV()" style="border:none;background:var(--green);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📥 CSV</button>
         </div>
-        <div style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
+        <!-- 월별 테이블 -->
+        <div id="inv-monthly-table" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
           <table style="width:100%;border-collapse:collapse;min-width:560px">
             <thead><tr style="background:#1A2B4A">
               <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">년/월</th>
@@ -798,9 +806,25 @@ body {
             <tbody id="invMonthlyTbody"></tbody>
           </table>
         </div>
-        <!-- 계좌별 월별 상세 -->
+        <!-- 주별 테이블 -->
+        <div id="inv-weekly-table" style="display:none;background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
+          <table style="width:100%;border-collapse:collapse;min-width:420px">
+            <thead><tr style="background:#1A2B4A">
+              <th style="padding:10px 14px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;white-space:nowrap">주차</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap">전주대비</th>
+            </tr></thead>
+            <tbody id="invWeeklyTbody"></tbody>
+          </table>
+        </div>
+        <!-- 계좌별 상세 (월별만) -->
+        <div id="inv-monthly-detail-wrap">
         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">계좌별 월별 상세</div>
         <div id="invMonthlyDetail"></div>
+        </div><!-- /inv-monthly-detail-wrap -->
       </div>
     </div>
 
@@ -1175,7 +1199,14 @@ body {
   <div id="inp-invest">
     <div class="form-card">
       <div class="form-title">📈 투자자산 입력</div>
-      <p style="font-size:12px;color:var(--sub);margin-bottom:14px">계좌와 년/월을 선택하면 기존 데이터를 불러옵니다</p>
+      <!-- 월별/주별 토글 -->
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <button id="inv-mode-month" onclick="setInvMode('month')"
+          style="flex:1;padding:8px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">📅 월별</button>
+        <button id="inv-mode-week" onclick="setInvMode('week')"
+          style="flex:1;padding:8px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">🗓 주별</button>
+      </div>
+      <p id="inv-mode-desc" style="font-size:12px;color:var(--sub);margin-bottom:14px">계좌와 년/월을 선택하면 기존 데이터를 불러옵니다</p>
       <div class="form-group">
         <label class="form-label">계좌 선택</label>
         <select class="form-input form-select" id="inv-acct" onchange="onInvAcctChange()">
@@ -1190,8 +1221,9 @@ body {
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">년/월</label>
+          <label class="form-label" id="inv-period-label">년/월</label>
           <input type="month" class="form-input" id="inv-month" value="2026-05" onchange="onInvAcctChange()">
+          <input type="week"  class="form-input" id="inv-week"  style="display:none" onchange="onInvAcctChange()">
         </div>
         <div class="form-group">
           <label class="form-label">현재 자산 (원)</label>
@@ -1201,7 +1233,7 @@ body {
       <div id="inv-loaded-badge" style="display:none;margin-bottom:12px"></div>
       <div style="border-top:1px solid var(--gray-100);padding-top:14px;margin-top:4px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="font-size:13px;font-weight:700;color:var(--text)">💸 당월 입금</span>
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="inv-dep-label">💸 당기 입금</span>
           <button onclick="addInvDepRow()" style="border:none;background:var(--primary-l);color:var(--primary);padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ 추가</button>
         </div>
         <div id="inv-dep-rows"></div>
@@ -1212,7 +1244,7 @@ body {
       </div>
       <div style="border-top:1px solid var(--gray-100);padding-top:14px;margin-top:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="font-size:13px;font-weight:700;color:var(--text)">📤 당월 출금</span>
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="inv-wd-label">📤 당기 출금</span>
           <button onclick="addInvWdRow()" style="border:none;background:var(--red-l);color:var(--red);padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ 추가</button>
         </div>
         <div id="inv-wd-rows"></div>
@@ -2070,7 +2102,9 @@ function getSheet(name) {
 function norm(val) {
   if (!val && val !== 0) return '';
   if (val instanceof Date) return val.getFullYear()+'-'+String(val.getMonth()+1).padStart(2,'0');
-  return String(val).replace(/^'+/,'').trim().slice(0,7);
+  const s = String(val).replace(/^'+/,'').trim();
+  if (/^\d{4}-W\d{2}$/.test(s)) return s;
+  return s.slice(0,7);
 }
 
 function resp(obj) {
@@ -3459,27 +3493,81 @@ function renderInputPage(){
 
 // ── 투자 입력 ─────────────────────────────────────────────
 let invDepItems=[{amt:0,memo:''}], invWdItems=[{amt:0,memo:''}];
+let invMode = 'month'; // 'month' | 'week'
+
+function isWeekPeriod(p){ return /^\d{4}-W\d{2}$/.test(String(p)); }
+function isMonthPeriod(p){ return /^\d{4}-\d{2}$/.test(String(p)); }
+
+function fmtPeriod(p){
+  if(!p) return '—';
+  if(isWeekPeriod(p)){
+    const [y,w]=p.split('-W');
+    return `${y}년 ${w}주차`;
+  }
+  return fmtMo(p);
+}
+
+function getInvPeriod(){
+  if(invMode==='week'){
+    const v=document.getElementById('inv-week').value;
+    if(!v) return '';
+    // <input type="week"> returns "2025-W18" format directly
+    return v;
+  }
+  return document.getElementById('inv-month').value;
+}
+
+function setInvMode(mode){
+  invMode=mode;
+  const mBtn=document.getElementById('inv-mode-month');
+  const wBtn=document.getElementById('inv-mode-week');
+  const mInp=document.getElementById('inv-month');
+  const wInp=document.getElementById('inv-week');
+  const lbl=document.getElementById('inv-period-label');
+  const desc=document.getElementById('inv-mode-desc');
+  if(mode==='month'){
+    mBtn.style.background='var(--primary)'; mBtn.style.color='#fff';
+    wBtn.style.background='var(--gray-100)'; wBtn.style.color='var(--gray-600)';
+    mInp.style.display=''; wInp.style.display='none';
+    if(lbl) lbl.textContent='년/월';
+    if(desc) desc.textContent='계좌와 년/월을 선택하면 기존 데이터를 불러옵니다';
+  } else {
+    wBtn.style.background='var(--primary)'; wBtn.style.color='#fff';
+    mBtn.style.background='var(--gray-100)'; mBtn.style.color='var(--gray-600)';
+    mInp.style.display='none'; wInp.style.display='';
+    // 오늘 기준 현재 주 기본값 설정
+    if(!wInp.value){
+      const now=new Date();
+      const jan1=new Date(now.getFullYear(),0,1);
+      const week=Math.ceil(((now-jan1)/86400000+jan1.getDay()+1)/7);
+      wInp.value=`${now.getFullYear()}-W${String(week).padStart(2,'0')}`;
+    }
+    if(lbl) lbl.textContent='주차';
+    if(desc) desc.textContent='계좌와 주차를 선택하면 기존 데이터를 불러옵니다';
+  }
+  onInvAcctChange();
+}
 
 function onInvAcctChange(){
   const acct=document.getElementById('inv-acct').value;
-  const month=document.getElementById('inv-month').value;
-  if(!acct||!month)return;
-  const rec=DB.invest.find(r=>r.acct===acct&&r.month===month);
+  const period=getInvPeriod();
+  if(!acct||!period)return;
+  const rec=DB.invest.find(r=>r.acct===acct&&r.month===period);
   const badge=document.getElementById('inv-loaded-badge');
   if(rec){
     setComma('inv-curr',rec.curr);
     invDepItems=rec.depItems&&rec.depItems.length?rec.depItems:[{amt:rec.dep||0,memo:''}];
     invWdItems=rec.wdItems&&rec.wdItems.length?rec.wdItems:[{amt:rec.wd||0,memo:''}];
     badge.style.display='block';
-    badge.innerHTML=`<span class="tag tag-blue">📂 ${fmtMo(month)} 데이터 불러옴</span>`;
+    badge.innerHTML=`<span class="tag tag-blue">📂 ${fmtPeriod(period)} 데이터 불러옴</span>`;
   } else {
     document.getElementById('inv-curr').value='';
     invDepItems=[{amt:0,memo:''}]; invWdItems=[{amt:0,memo:''}];
-    const prev=DB.invest.filter(r=>r.acct===acct&&r.month<month).sort((a,b)=>a.month.localeCompare(b.month));
-    if(prev.length){
-      const last=prev[prev.length-1];
-      setComma('inv-dep-cum-display',last.depCum);
-    }
+    // 같은 타입(월별/주별)의 이전 레코드에서 누적값 참조
+    const sameType = invMode==='week' ? isWeekPeriod : isMonthPeriod;
+    const prev=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period)
+      .sort((a,b)=>a.month.localeCompare(b.month));
+    if(prev.length) setComma('inv-dep-cum-display',prev[prev.length-1].depCum);
     badge.style.display='block';
     badge.innerHTML=`<span class="tag tag-green">🆕 신규 입력</span>`;
   }
@@ -3531,12 +3619,13 @@ function calcInvTotals(){
 }
 function calcInvPreview(){
   const acct=document.getElementById('inv-acct').value;
-  const month=document.getElementById('inv-month').value;
+  const period=getInvPeriod();
   const curr=rawNum('inv-curr');
   const dep=getTxnTotal(invDepItems), wd=getTxnTotal(invWdItems);
   if(!curr&&!dep&&!wd){document.getElementById('inv-calc-box').style.display='none';return;}
 
-  const prevRows=DB.invest.filter(r=>r.acct===acct&&r.month<month).sort((a,b)=>a.month.localeCompare(b.month));
+  const sameType = invMode==='week' ? isWeekPeriod : isMonthPeriod;
+  const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period).sort((a,b)=>a.month.localeCompare(b.month));
   const prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
   const prevDep=prevLast?prevLast.depCum||0:0, prevWd=prevLast?prevLast.wdCum||0:0;
   const depCum=prevDep+dep, wdCum=prevWd+wd;
@@ -3556,27 +3645,31 @@ function calcInvPreview(){
 
 async function saveInvEntry(){
   const acct=document.getElementById('inv-acct').value;
-  const month=document.getElementById('inv-month').value;
+  const period=getInvPeriod();
   const curr=rawNum('inv-curr');
   if(!acct){showToast('계좌를 선택해주세요','warn');return;}
+  if(!period){showToast(invMode==='week'?'주차를 선택해주세요':'년/월을 선택해주세요','warn');return;}
   if(!curr){showToast('현재 자산을 입력해주세요','warn');return;}
   const dep=getTxnTotal(invDepItems), wd=getTxnTotal(invWdItems);
-  const prevRows=DB.invest.filter(r=>r.acct===acct&&r.month<month).sort((a,b)=>a.month.localeCompare(b.month));
+  // 같은 타입(월별/주별)의 이전 레코드에서 누적 계산
+  const sameType = invMode==='week' ? isWeekPeriod : isMonthPeriod;
+  const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period)
+    .sort((a,b)=>a.month.localeCompare(b.month));
   const prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
   const depCum=(prevLast?prevLast.depCum||0:0)+dep;
   const wdCum=(prevLast?prevLast.wdCum||0:0)+wd;
-  const rec={acct,month,dep,wd,depCum,wdCum,curr,
+  const rec={acct,month:period,dep,wd,depCum,wdCum,curr,
     depItems:invDepItems.filter(it=>it.amt>0||it.memo),
     wdItems:invWdItems.filter(it=>it.amt>0||it.memo)};
   await gasUpsert('invest',rec);
-  renderAll(); showToast(`✅ ${acct} ${fmtMo(month)} 저장 완료!`,'success');
+  renderAll(); showToast(`✅ ${acct} ${fmtPeriod(period)} 저장 완료!`,'success');
 }
 async function deleteInvEntry(){
   const acct=document.getElementById('inv-acct').value;
-  const month=document.getElementById('inv-month').value;
-  if(!acct||!month){showToast('계좌와 월을 선택해주세요','warn');return;}
-  if(!confirm(`${acct} ${fmtMo(month)} 삭제할까요?`))return;
-  await gasDelete('invest',acct+'|'+month);
+  const period=getInvPeriod();
+  if(!acct||!period){showToast('계좌와 기간을 선택해주세요','warn');return;}
+  if(!confirm(`${acct} ${fmtPeriod(period)} 삭제할까요?`))return;
+  await gasDelete('invest',acct+'|'+period);
   clearInvForm(); renderAll(); showToast('🗑 삭제 완료','error');
 }
 function clearInvForm(){
@@ -4994,7 +5087,8 @@ const GRADE_MAP = {
 
 // 월별 전체 합계 (정확한 계산)
 function getMonthlyTotals2(){
-  const months = [...new Set(DB.invest.map(r=>r.month))].sort().filter(m=>!HIDDEN_MO_INV.has(m));
+  const months = [...new Set(DB.invest.map(r=>r.month))].sort()
+    .filter(m=>isMonthPeriod(m)&&!HIDDEN_MO_INV.has(m));
   return months.map(mo=>{
     const rows = DB.invest.filter(r=>r.month===mo && r.curr!=null);
     const accts2 = [...new Set(DB.invest.map(r=>r.acct))];
@@ -5019,6 +5113,26 @@ function getMonthlyTotals2(){
     }
     const wdMonth = Math.max(0, totalWdCum - prevWdCum);
     return {month:mo, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate, wdMonth};
+  });
+}
+
+function getWeeklyTotals(){
+  const weeks = [...new Set(DB.invest.map(r=>r.month))].sort()
+    .filter(m=>isWeekPeriod(m));
+  const accts = [...new Set(DB.invest.map(r=>r.acct))];
+  return weeks.map(wk=>{
+    const rows = DB.invest.filter(r=>r.month===wk && r.curr!=null);
+    let totalDepCum=0, totalWdCum=0;
+    accts.forEach(acct=>{
+      const acctRows=DB.invest.filter(r=>r.acct===acct&&isWeekPeriod(r.month)&&r.month<=wk&&r.curr!=null)
+        .sort((a,b)=>a.month.localeCompare(b.month));
+      if(acctRows.length){ const last=acctRows[acctRows.length-1]; totalDepCum+=last.depCum||0; totalWdCum+=last.wdCum||0; }
+    });
+    const prin=totalDepCum-totalWdCum;
+    const curr=rows.reduce((s,r)=>s+(r.curr||0),0);
+    const pnl=curr-prin;
+    const rate=prin?pnl/prin:0;
+    return {week:wk, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate};
   });
 }
 
@@ -5155,10 +5269,29 @@ function renderInvBars(elId, all){
   }).join('');
 }
 
+// 월별/주별 뷰 상태
+let invView = 'month'; // 'month' | 'week'
+function setInvView(v){
+  invView = v;
+  const bM=document.getElementById('btnViewMonth'), bW=document.getElementById('btnViewWeek');
+  if(bM){ bM.style.background=v==='month'?'var(--primary)':'var(--gray-100)'; bM.style.color=v==='month'?'#fff':'var(--gray-600)'; }
+  if(bW){ bW.style.background=v==='week'?'var(--primary)':'var(--gray-100)'; bW.style.color=v==='week'?'#fff':'var(--gray-600)'; }
+  const mt=document.getElementById('inv-monthly-table'), wt=document.getElementById('inv-weekly-table');
+  const dw=document.getElementById('inv-monthly-detail-wrap');
+  const ttl=document.getElementById('inv-table-title');
+  if(mt) mt.style.display=v==='month'?'':'none';
+  if(wt) wt.style.display=v==='week'?'':'none';
+  if(dw) dw.style.display=v==='month'?'':'none';
+  if(ttl) ttl.textContent=v==='month'?'월별 전체 합계':'주별 전체 합계';
+  renderInvMonthly();
+}
+
 // 월별추이 탭
 function renderInvMonthly(){
   const mos = getMonthlyTotals2();
-  const last = mos[mos.length-1];
+  const wks = getWeeklyTotals();
+  const src = invView==='week' ? wks : mos;
+  const last = src[src.length-1];
   if(last){
     const el_curr = document.getElementById('mo-curr');
     const el_rate = document.getElementById('mo-rate');
@@ -5196,12 +5329,32 @@ function renderInvMonthly(){
     }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--sub)">데이터 없음</td></tr>';
   }
 
+  // 주별 합계 테이블
+  const wkTb = document.getElementById('invWeeklyTbody');
+  if(wkTb){
+    let prevCurr=null;
+    wkTb.innerHTML = wks.map((w,i)=>{
+      const mom = prevCurr!=null ? w.curr-prevCurr : null;
+      const momStr = mom==null ? '<span style="color:var(--sub)">—</span>' :
+        `<span style="color:${mom>=0?'var(--green)':'var(--red)'};font-weight:700">${mom>=0?'▲':'▼'} ${fmtN(Math.abs(mom))}</span>`;
+      prevCurr=w.curr;
+      return `<tr style="${i%2?'':'background:var(--gray-50)'}">
+        <td style="padding:9px 14px;font-size:11px;font-weight:700;white-space:nowrap">${fmtPeriod(w.week)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(w.curr)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(w.prin)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${w.pnl>=0?'var(--green)':'var(--red)'}">${w.pnl>=0?'+':''}${fmtN(w.pnl)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${w.rate>=0?'var(--green)':'var(--red)'}">${fmtP(w.rate)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--sub)">주별 데이터 없음<br><span style="font-size:11px">입력 탭 → 🗓 주별로 데이터를 입력하세요</span></td></tr>';
+  }
+
   // 계좌별 월별 상세
   const detailEl = document.getElementById('invMonthlyDetail');
   if(detailEl){
     const ACCT_LIST2 = ["토스증권(본인)","신한(ISA)","토스(일이)","신한(일이)ISA","토스(수빈)","토스(유빈)","업비트"];
     detailEl.innerHTML = ACCT_LIST2.map(acct=>{
-      const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&!HIDDEN_MO_INV.has(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+      const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isMonthPeriod(r.month)&&!HIDDEN_MO_INV.has(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
       if(!rows.length) return '';
       let prevR=null;
       return `<div style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow-s)">
@@ -5248,11 +5401,14 @@ function setTrendMode2(m){
 
 function renderInvTrendChart(){
   const el=document.getElementById('invTrendChart'); if(!el)return;
-  const mos=getMonthlyTotals2(); if(mos.length<2){el.innerHTML='<p style="text-align:center;color:var(--sub);font-size:12px;padding:20px">데이터 부족</p>';return;}
+  const isWeek = invView==='week';
+  const src = isWeek ? getWeeklyTotals() : getMonthlyTotals2();
+  if(src.length<2){el.innerHTML='<p style="text-align:center;color:var(--sub);font-size:12px;padding:20px">데이터 부족</p>';return;}
   const isAsset=trendMode2==='asset';
-  const data=mos.map(m=>isAsset?m.curr:m.rate*100);
+  const data=src.map(m=>isAsset?m.curr:m.rate*100);
+  const labels=src.map(m=>isWeek?m.week:m.month);
   const color=isAsset?'#3182F6':'#05C072';
-  drawLineChart(el, mos.map(m=>m.month), data, color, isAsset?'억':'%', isAsset?null:0);
+  drawLineChart(el, labels, data, color, isAsset?'억':'%', isAsset?null:0);
 }
 
 // 히트맵
