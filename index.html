@@ -2343,7 +2343,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[] };
 let GAS_URL = '';
-const BUILD_DATE = '2026-05-06 21:00 KST';
+const BUILD_DATE = '2026-05-07 06:10 KST';
 let ANTHROPIC_KEY = '';
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
@@ -3509,8 +3509,10 @@ function renderInputPage(){
 let invDepItems=[{amt:0,memo:''}], invWdItems=[{amt:0,memo:''}];
 let invMode = 'month'; // 'month' | 'week'
 
-function isWeekPeriod(p){ return /^\d{4}-W\d{2}$/.test(String(p)); }
+function isWeekPeriod(p){ return /^\d{4}-W\d{1,2}$/.test(String(p)); }
 function isMonthPeriod(p){ return /^\d{4}-\d{2}$/.test(String(p)); }
+// "2026-W1" → "2026-W19" 복원 불가, DB 로드 시 정규화용
+function normalizeWeek(p){ if(!isWeekPeriod(p))return p; const [y,w]=p.split('-W'); return `${y}-W${w.padStart(2,'0')}`; }
 
 function getWeekInfo(weekStr){
   const [yearStr,wStr]=weekStr.split('-W');
