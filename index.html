@@ -1272,6 +1272,7 @@ body {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <span style="font-size:13px;font-weight:700;color:var(--text)">📋 입력 이력</span>
         <div style="display:flex;gap:6px">
+          <button id="del-corrupted-btn" onclick="deleteCorruptedWeeks()" style="display:none;padding:5px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;background:#FFF0F1;color:var(--red);cursor:pointer">🗑 손상항목 삭제</button>
           <select id="inv-filter-acct" onchange="renderInvLog()" style="padding:5px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff;color:var(--text)"><option value="">전체</option></select>
         </div>
       </div>
@@ -3743,6 +3744,7 @@ function clearInvForm(){
   document.getElementById('inv-loaded-badge').style.display='none';
 }
 
+function isCorruptedWeek(p){ return /^\d{4}-W\d$/.test(String(p)); } // 1자리 주차 = GAS 손상
 function renderInvLog(){
   const fa=document.getElementById('inv-filter-acct');
   if(fa){
@@ -3752,14 +3754,18 @@ function renderInvLog(){
   }
   let rows=[...DB.invest].sort((a,b)=>b.month.localeCompare(a.month)||a.acct.localeCompare(b.acct));
   if(fa&&fa.value) rows=rows.filter(r=>r.acct===fa.value);
+  const hasCorrupted=rows.some(r=>isCorruptedWeek(r.month));
+  const btn=document.getElementById('del-corrupted-btn');
+  if(btn) btn.style.display=hasCorrupted?'block':'none';
   const wrap=document.getElementById('inv-log-wrap');
   if(!wrap)return;
   wrap.innerHTML=rows.slice(0,30).map((r,i)=>{
+    const corrupted=isCorruptedWeek(r.month);
     const prin=(r.depCum||0)-(r.wdCum||0), pnl=r.curr!=null?r.curr-prin:null;
     const rate=prin&&pnl!=null?pnl/prin:null;
-    return `<div class="list-item" style="${i%2?'':'background:var(--gray-50)'}">
+    return `<div class="list-item" style="${i%2?'':'background:var(--gray-50)'}${corrupted?';border-left:3px solid var(--red)':''}">
       <div class="list-body">
-        <div class="list-name">${r.acct} <span style="font-size:11px;color:var(--sub);font-weight:400">${fmtPeriod(r.month)}</span></div>
+        <div class="list-name">${r.acct} <span style="font-size:11px;color:${corrupted?'var(--red)':'var(--sub)'};font-weight:400">${corrupted?'⚠️ 손상됨 (재입력 필요)':fmtPeriod(r.month)}</span></div>
         <div class="list-sub">입금 ${fmtN(r.dep)} · 출금 ${fmtN(r.wd)}</div>
       </div>
       <div class="list-right">
@@ -3768,6 +3774,13 @@ function renderInvLog(){
       </div>
     </div>`;
   }).join('')||'<div class="empty"><div class="empty-text">데이터 없음</div></div>';
+}
+async function deleteCorruptedWeeks(){
+  const corrupted=DB.invest.filter(r=>isCorruptedWeek(r.month));
+  if(!corrupted.length)return;
+  if(!confirm(`손상된 주별 데이터 ${corrupted.length}건을 삭제할까요?\n삭제 후 올바른 주차로 다시 입력해주세요.`))return;
+  for(const r of corrupted) await gasDelete('invest',r.acct+'|'+r.month);
+  renderAll(); showToast(`🗑 ${corrupted.length}건 삭제 완료. W19로 다시 입력해주세요.`,'success');
 }
 
 // ── 계좌 입력 ─────────────────────────────────────────────
