@@ -3744,7 +3744,7 @@ function renderInvLog(){
     const rate=prin&&pnl!=null?pnl/prin:null;
     return `<div class="list-item" style="${i%2?'':'background:var(--gray-50)'}">
       <div class="list-body">
-        <div class="list-name">${r.acct} <span style="font-size:11px;color:var(--sub);font-weight:400">${fmtMo(r.month)}</span></div>
+        <div class="list-name">${r.acct} <span style="font-size:11px;color:var(--sub);font-weight:400">${fmtPeriod(r.month)}</span></div>
         <div class="list-sub">입금 ${fmtN(r.dep)} · 출금 ${fmtN(r.wd)}</div>
       </div>
       <div class="list-right">
@@ -5420,7 +5420,7 @@ function renderInvMonthly(){
   if(detailEl){
     const ACCT_LIST2 = ["토스증권(본인)","신한(ISA)","토스(일이)","신한(일이)ISA","토스(수빈)","토스(유빈)","업비트"];
     detailEl.innerHTML = ACCT_LIST2.map(acct=>{
-      const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isMonthPeriod(r.month)&&!HIDDEN_MO_INV.has(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+      const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&(isMonthPeriod(r.month)||isWeekPeriod(r.month))&&!HIDDEN_MO_INV.has(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
       if(!rows.length) return '';
       let prevR=null;
       return `<div style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow-s)">
@@ -5428,11 +5428,11 @@ function renderInvMonthly(){
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
         <table style="width:100%;border-collapse:collapse;min-width:320px">
           <thead><tr style="background:#1A2B4A">
-            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px">년/월</th>
+            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px">기간</th>
             <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">현재자산</th>
             <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">손익금</th>
             <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익률</th>
-            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center">전월대비</th>
+            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center">전기대비</th>
           </tr></thead>
           <tbody>
           ${rows.map((r,i)=>{
@@ -5443,7 +5443,7 @@ function renderInvMonthly(){
             const momStr=mom==null?'<span style="color:var(--sub)">—</span>':`<span style="color:${mom>=0?'var(--green)':'var(--red)'};font-weight:700">${mom>=0?'▲':'▼'} ${fmtN(Math.abs(mom))}</span>`;
             prevR=r.curr;
             return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-              <td style="padding:9px 14px;font-size:11px;font-weight:700">${fmtMo(r.month)}</td>
+              <td style="padding:9px 14px;font-size:11px;font-weight:700">${fmtPeriod(r.month)}</td>
               <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(r.curr)}</td>
               <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${fmtN(pnl)}</td>
               <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${rate>=0?'var(--green)':'var(--red)'}">${fmtP(rate)}</td>
