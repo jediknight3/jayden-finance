@@ -4175,10 +4175,14 @@ function exportAllCSV(){
 function copyGsCode(){
   const ta=document.getElementById('gs-code-area');
   const btn=document.getElementById('copy-btn');
-  ta.select();
-  if(navigator.clipboard){ navigator.clipboard.writeText(ta.value).then(()=>{btn.textContent='✅ 복사됨!';setTimeout(()=>btn.textContent='📋 복사',2000);}); }
-  else{ document.execCommand('copy'); btn.textContent='✅ 복사됨!'; setTimeout(()=>btn.textContent='📋 복사',2000); }
-  showToast('코드 복사 완료!','success');
+  const done=()=>{btn.textContent='✅ 복사됨!';setTimeout(()=>btn.textContent='📋 복사',2000);showToast('코드 복사 완료!','success');};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{
+      ta.select(); ta.setSelectionRange(0,99999); document.execCommand('copy'); done();
+    });
+  } else {
+    ta.select(); ta.setSelectionRange(0,99999); document.execCommand('copy'); done();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
