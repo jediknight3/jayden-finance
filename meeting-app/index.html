@@ -559,10 +559,39 @@ function renderTranscriptBubbles(text) {
       }
       return `<div style="margin-bottom:6px;color:var(--sub);font-size:13px">${escHtml(line)}</div>`;
     }).join('');
+    // 화자 이름 변경 UI
+    const speakers = getSpeakers(text);
+    let el = document.getElementById('spk-rename-rec');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'spk-rename-rec';
+      box.parentNode.insertBefore(el, box.nextSibling);
+    }
+    el.innerHTML = `<div style="margin-top:10px">
+      <button class="btn btn-outline btn-full btn-sm" onclick="toggleSpkPanel()" style="font-size:13px">✏️ 화자 이름 변경</button>
+      <div id="spk-panel-rec" style="display:none;background:var(--gray-50);border-radius:var(--radius-m);padding:12px;margin-top:6px">
+        ${speakers.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:700;color:${colors[i%6]};min-width:52px">${escHtml(s)}</span>
+          <input id="rn-${s}" type="text" placeholder="실제 이름" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-s);font-size:14px;background:#fff">
+        </div>`).join('')}
+        <button class="btn btn-primary btn-full" onclick="applyRecRename()" style="margin-top:4px">✅ 적용</button>
+      </div>
+    </div>`;
   } else {
     box.style.cssText = 'white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.75;color:var(--gray-700)';
     box.textContent = text;
   }
+}
+function toggleSpkPanel() {
+  const p = document.getElementById('spk-panel-rec');
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function applyRecRename() {
+  const map = buildRenameMap(getSpeakers(S.transcript), 'rn-');
+  if (!Object.keys(map).length) { showToast('변경할 이름을 입력해주세요'); return; }
+  S.transcript = renameSpeakers(S.transcript, map);
+  renderTranscriptBubbles(S.transcript);
+  showToast('✅ 화자 이름 변경됨');
 }
 
 async function retryMinutes() {
@@ -936,6 +965,47 @@ ${transcript}
 *Meeting Minutes App · ${today}*`;
 }
 
+// ── SPEAKER RENAME ───────────────────────────────────────
+function getSpeakers(transcript) {
+  const seen = new Set(), order = [];
+  (transcript || '').split('\n').forEach(l => {
+    const m = l.match(/^(화자\d+):/);
+    if (m && !seen.has(m[1])) { seen.add(m[1]); order.push(m[1]); }
+  });
+  return order;
+}
+function renameSpeakers(text, map) {
+  if (!text) return text;
+  let r = text;
+  Object.entries(map).sort((a,b) => b[0].length - a[0].length).forEach(([old, n]) => {
+    r = r.replace(new RegExp(old.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g'), n);
+  });
+  return r;
+}
+function buildRenameMap(speakers, prefix) {
+  const map = {};
+  speakers.forEach(s => {
+    const el = document.getElementById(prefix + s);
+    if (el && el.value.trim() && el.value.trim() !== s) map[s] = el.value.trim();
+  });
+  return map;
+}
+async function applyViewRename(id) {
+  const m = getMeeting(id); if (!m) return;
+  const speakers = getSpeakers(m.transcript);
+  const map = buildRenameMap(speakers, 'vn-');
+  if (!Object.keys(map).length) { showToast('변경할 이름을 입력해주세요'); return; }
+  m.transcript = renameSpeakers(m.transcript, map);
+  if (m.minutes) m.minutes = renameSpeakers(m.minutes, map);
+  m.title = extractTitle(m.minutes || m.transcript);
+  const idx = S.meetings.findIndex(x => x.id === id);
+  if (idx >= 0) S.meetings[idx] = { ...S.meetings[idx], ...m };
+  S.currentMeeting = m;
+  saveMeetingsData();
+  showToast('✅ 화자 이름이 회의록에 반영됐습니다');
+  renderView();
+}
+
 // ── SETTINGS ─────────────────────────────────────────────
 function renderSettings() {
   document.getElementById('set-dg-token').value = S.dgToken;
@@ -1086,6 +1156,19 @@ function renderView() {
         </div>
         <div class="md-body">${mdToHtml(content)}</div>
       </div>
+      ${(()=>{
+        const spks = getSpeakers(m.transcript||'');
+        if (!spks.length) return '';
+        const colors = ['#5B5FEF','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+        return `<div class="card">
+          <div class="section-label" style="margin-bottom:10px">✏️ 화자 이름 변경</div>
+          ${spks.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:700;color:${colors[i%6]};min-width:52px">${escHtml(s)}</span>
+            <input id="vn-${s}" type="text" placeholder="실제 이름" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-s);font-size:14px;background:var(--gray-50)">
+          </div>`).join('')}
+          <button class="btn btn-primary btn-full" onclick="applyViewRename('${m.id}')" style="margin-top:4px">✅ 적용 → 회의록 업데이트</button>
+        </div>`;
+      })()}
       <div class="card">
         <div class="section-label" style="margin-bottom:12px">다운로드</div>
         <div class="dl-btns">
