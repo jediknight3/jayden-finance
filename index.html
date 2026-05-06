@@ -1223,7 +1223,8 @@ body {
         <div class="form-group">
           <label class="form-label" id="inv-period-label">년/월</label>
           <input type="month" class="form-input" id="inv-month" value="2026-05" onchange="onInvAcctChange()">
-          <input type="week"  class="form-input" id="inv-week"  style="display:none" onchange="onInvAcctChange()">
+          <input type="week"  class="form-input" id="inv-week"  style="display:none" onchange="updateWeekLabel();onInvAcctChange()">
+          <div id="inv-week-label" style="display:none;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--blue-50,#EFF6FF);border-radius:6px"></div>
         </div>
         <div class="form-group">
           <label class="form-label">현재 자산 (원)</label>
@@ -3498,11 +3499,34 @@ let invMode = 'month'; // 'month' | 'week'
 function isWeekPeriod(p){ return /^\d{4}-W\d{2}$/.test(String(p)); }
 function isMonthPeriod(p){ return /^\d{4}-\d{2}$/.test(String(p)); }
 
+function getWeekInfo(weekStr){
+  const [yearStr,wStr]=weekStr.split('-W');
+  const y=parseInt(yearStr), w=parseInt(wStr);
+  function thursdayOf(yr,wk){
+    const jan4=new Date(yr,0,4), dow=jan4.getDay()||7;
+    return new Date(yr,0,4-dow+1+(wk-1)*7+3);
+  }
+  const thu=thursdayOf(y,w);
+  const mo=thu.getMonth()+1, yr=thu.getFullYear();
+  let weekOfMonth=1, cw=w-1, cy=y;
+  for(let i=0;i<6;i++){
+    if(cw<1){cy--;const t53=thursdayOf(cy,53);cw=t53.getFullYear()===cy?53:52;}
+    const pt=thursdayOf(cy,cw);
+    if(pt.getFullYear()===yr&&pt.getMonth()+1===mo){weekOfMonth++;cw--;}else break;
+  }
+  return {year:yr,month:mo,weekOfMonth,weekNum:w};
+}
+
+function weekToMonthStr(weekStr){
+  const {year,month}=getWeekInfo(weekStr);
+  return `${year}-${String(month).padStart(2,'0')}`;
+}
+
 function fmtPeriod(p){
   if(!p) return '—';
   if(isWeekPeriod(p)){
-    const [y,w]=p.split('-W');
-    return `${y}년 ${w}주차`;
+    const {month,weekOfMonth,weekNum}=getWeekInfo(p);
+    return `${month}월 ${weekOfMonth}주차 (W${String(weekNum).padStart(2,'0')})`;
   }
   return fmtMo(p);
 }
@@ -3544,8 +3568,21 @@ function setInvMode(mode){
     }
     if(lbl) lbl.textContent='주차';
     if(desc) desc.textContent='계좌와 주차를 선택하면 기존 데이터를 불러옵니다';
+    updateWeekLabel();
   }
   onInvAcctChange();
+}
+
+function updateWeekLabel(){
+  const wInp=document.getElementById('inv-week');
+  const lbl=document.getElementById('inv-week-label');
+  if(!lbl) return;
+  if(invMode==='week'&&wInp&&wInp.value){
+    lbl.style.display='block';
+    lbl.textContent='📅 '+fmtPeriod(wInp.value);
+  } else {
+    lbl.style.display='none';
+  }
 }
 
 function onInvAcctChange(){
@@ -4415,7 +4452,7 @@ function getAllInvLatest(){
 function buildShortPrompt(type){
   const inv=getInvTotals();
   const nw=getNetWorth();
-  const mos=getMonthlyTotals2();
+  const mos=getMonthlyTotalsAll();
   const last=mos.length?mos[mos.length-1]:null;
   const prev=mos.length>1?mos[mos.length-2]:null;
   const chgStr=last&&prev?('\n【전월대비】'+fmtN(last.curr-prev.curr)+'원 변화'):'';
@@ -4475,7 +4512,7 @@ function renderAnalysis(){
 
 // ── 💰 순자산 증감 원인 분석 ──
 function renderWealthAnalysis(){
-  const mos = getMonthlyTotals2();
+  const mos = getMonthlyTotalsAll();
   if(!mos.length) return;
 
   const last = mos[mos.length-1];
@@ -4703,7 +4740,7 @@ function renderDebtAnalysis(){
   }
 
   // 부채비율 추이 차트 (투자자산 대비)
-  const mos = getMonthlyTotals2();
+  const mos = getMonthlyTotalsAll();
   const chartEl = document.getElementById('an-debt-ratio-chart');
   if(chartEl && mos.length>1){
     const data = mos.map(m=>totalDebt>0?(totalDebt/m.curr*100).toFixed(1):0);
@@ -5136,6 +5173,25 @@ function getWeeklyTotals(){
   });
 }
 
+function getMonthlyFromWeekly(){
+  const wks=getWeeklyTotals();
+  if(!wks.length) return [];
+  const byMonth={};
+  wks.forEach(wt=>{
+    const mo=weekToMonthStr(wt.week);
+    if(!byMonth[mo]||wt.week>byMonth[mo].week) byMonth[mo]={...wt,month:mo};
+  });
+  return Object.keys(byMonth).sort().map(mo=>byMonth[mo]);
+}
+
+// 월별 직접입력 + 주별에서 파생(빈 달만) 병합
+function getMonthlyTotalsAll(){
+  const direct=getMonthlyTotals2();
+  const directSet=new Set(direct.map(m=>m.month));
+  const fromWeekly=getMonthlyFromWeekly().filter(m=>!directSet.has(m.month));
+  return [...direct,...fromWeekly].sort((a,b)=>a.month.localeCompare(b.month));
+}
+
 // 투자 서브탭
 let invSubTab = 'summary';
 let trendMode2 = 'asset';
@@ -5288,7 +5344,7 @@ function setInvView(v){
 
 // 월별추이 탭
 function renderInvMonthly(){
-  const mos = getMonthlyTotals2();
+  const mos = getMonthlyTotalsAll();
   const wks = getWeeklyTotals();
   const src = invView==='week' ? wks : mos;
   const last = src[src.length-1];
@@ -5402,7 +5458,7 @@ function setTrendMode2(m){
 function renderInvTrendChart(){
   const el=document.getElementById('invTrendChart'); if(!el)return;
   const isWeek = invView==='week';
-  const src = isWeek ? getWeeklyTotals() : getMonthlyTotals2();
+  const src = isWeek ? getWeeklyTotals() : getMonthlyTotalsAll();
   if(src.length<2){el.innerHTML='<p style="text-align:center;color:var(--sub);font-size:12px;padding:20px">데이터 부족</p>';return;}
   const isAsset=trendMode2==='asset';
   const data=src.map(m=>isAsset?m.curr:m.rate*100);
@@ -5568,7 +5624,7 @@ function renderInvAlert(){
 
 // CSV 내보내기
 function exportInvCSV(){
-  const mos=getMonthlyTotals2();
+  const mos=getMonthlyTotalsAll();
   const rows=[['년/월','입금누적','출금누적','투자원금','현재자산','손익금','수익률']];
   mos.forEach(m=>rows.push([fmtMo(m.month),m.depCum,m.wdCum,m.prin,m.curr,m.pnl,(m.rate*100).toFixed(1)+'%']));
   const csv=rows.map(r=>r.join(',')).join('\n');
