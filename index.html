@@ -808,14 +808,18 @@ body {
         </div>
         <!-- 주별 테이블 -->
         <div id="inv-weekly-table" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
-          <table style="width:100%;border-collapse:collapse;min-width:420px">
+          <table style="width:100%;border-collapse:collapse;min-width:560px">
             <thead><tr style="background:#1A2B4A">
-              <th style="padding:10px 14px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;white-space:nowrap">주차</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">주차</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">입금누적</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">출금누적</th>
               <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
               <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
               <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap">전주대비</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전주대비 자산</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전주대비율</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">주실출금</th>
             </tr></thead>
             <tbody id="invWeeklyTbody"></tbody>
           </table>
@@ -2349,7 +2353,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[] };
 let GAS_URL = '';
-const BUILD_DATE = '2026-05-07 16:48 KST';
+const BUILD_DATE = '2026-05-07 17:01 KST';
 let ANTHROPIC_KEY = '';
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
@@ -5211,6 +5215,7 @@ function getWeeklyTotals(){
   const weeks = [...new Set(DB.invest.map(r=>r.month))].sort()
     .filter(m=>isWeekPeriod(m));
   const accts = [...new Set(DB.invest.map(r=>r.acct))];
+  let prevWdCum=0;
   return weeks.map(wk=>{
     const rows = DB.invest.filter(r=>r.month===wk && r.curr!=null);
     let totalDepCum=0, totalWdCum=0;
@@ -5223,7 +5228,9 @@ function getWeeklyTotals(){
     const curr=rows.reduce((s,r)=>s+(r.curr||0),0);
     const pnl=curr-prin;
     const rate=prin?pnl/prin:0;
-    return {week:wk, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate};
+    const wdWeek=Math.max(0,totalWdCum-prevWdCum);
+    prevWdCum=totalWdCum;
+    return {week:wk, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate, wdWeek};
   });
 }
 
@@ -5444,21 +5451,74 @@ function renderInvMonthly(){
   // 주별 합계 테이블
   const wkTb = document.getElementById('invWeeklyTbody');
   if(wkTb){
-    let prevCurr=null;
+    let prevCurr=null, prevRate=null;
     wkTb.innerHTML = wks.map((w,i)=>{
-      const mom = prevCurr!=null ? w.curr-prevCurr : null;
-      const momStr = mom==null ? '<span style="color:var(--sub)">—</span>' :
-        `<span style="color:${mom>=0?'var(--green)':'var(--red)'};font-weight:700">${mom>=0?'▲':'▼'} ${fmtN(Math.abs(mom))}</span>`;
-      prevCurr=w.curr;
+      const momAmt = prevCurr!=null ? w.curr-prevCurr : null;
+      const momRateVal = prevRate!=null ? w.rate-prevRate : null;
+      const momStr = momAmt==null ? '<span style="color:var(--sub)">—</span>' :
+        `<span style="color:${momAmt>=0?'var(--green)':'var(--red)'};font-weight:700">${momAmt>=0?'▲':'▼'} ${fmtN(Math.abs(momAmt))}</span>`;
+      const momRateStr = momRateVal==null ? '<span style="color:var(--sub)">—</span>' :
+        `<span style="color:${momRateVal>=0?'var(--green)':'var(--red)'};font-weight:600">${momRateVal>=0?'+':''}${(momRateVal*100).toFixed(1)}%p</span>`;
+      prevCurr=w.curr; prevRate=w.rate;
       return `<tr style="${i%2?'':'background:var(--gray-50)'}">
         <td style="padding:9px 14px;font-size:11px;font-weight:700;white-space:nowrap">${fmtPeriod(w.week)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(w.curr)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(w.depCum)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(w.wdCum)}</td>
         <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(w.prin)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(w.curr)}</td>
         <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${w.pnl>=0?'var(--green)':'var(--red)'}">${w.pnl>=0?'+':''}${fmtN(w.pnl)}</td>
         <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${w.rate>=0?'var(--green)':'var(--red)'}">${fmtP(w.rate)}</td>
         <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:center">${momRateStr}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;color:var(--red);font-weight:600">${w.wdWeek>0?'-'+fmtN(w.wdWeek):'—'}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--sub)">주별 데이터 없음<br><span style="font-size:11px">입력 탭 → 🗓 주별로 데이터를 입력하세요</span></td></tr>';
+    }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--sub)">주별 데이터 없음<br><span style="font-size:11px">입력 탭 → 🗓 주별로 데이터를 입력하세요</span></td></tr>';
+  }
+
+  // 공용: 계좌별 상세 테이블 렌더러 (월별/주별 공통)
+  function renderAcctDetailTable(acct, rows, headerColor, periodLabel){
+    if(!rows.length) return '';
+    let prevR=null, prevRate=null;
+    return `<div style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow-s)">
+      <div style="background:${headerColor};color:#fff;padding:9px 14px;font-size:12px;font-weight:700">${acct}</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table style="width:100%;border-collapse:collapse;min-width:420px">
+        <thead><tr style="background:#1A2B4A">
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">${periodLabel}</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">입금누적</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">출금누적</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap">전기대비 자산</th>
+          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap">전기대비율</th>
+        </tr></thead>
+        <tbody>
+        ${rows.map((r,i)=>{
+          const prin=(r.depCum||0)-(r.wdCum||0);
+          const pnl=(r.curr||0)-prin;
+          const rate=prin?pnl/prin:0;
+          const mom=prevR!=null?r.curr-prevR:null;
+          const momRateVal=prevRate!=null?rate-prevRate:null;
+          const momStr=mom==null?'<span style="color:var(--sub)">—</span>':`<span style="color:${mom>=0?'var(--green)':'var(--red)'};font-weight:700">${mom>=0?'▲':'▼'} ${fmtN(Math.abs(mom))}</span>`;
+          const momRateStr=momRateVal==null?'<span style="color:var(--sub)">—</span>':`<span style="color:${momRateVal>=0?'var(--green)':'var(--red)'};font-weight:600">${momRateVal>=0?'+':''}${(momRateVal*100).toFixed(1)}%p</span>`;
+          prevR=r.curr; prevRate=rate;
+          return `<tr style="${i%2?'':'background:var(--gray-50)'}">
+            <td style="padding:9px 14px;font-size:11px;font-weight:700;white-space:nowrap">${fmtPeriod(r.month)}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(r.depCum||0)}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(r.wdCum||0)}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(prin)}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(r.curr)}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${fmtN(pnl)}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${rate>=0?'var(--green)':'var(--red)'}">${fmtP(rate)}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
+            <td style="padding:9px 10px;font-size:11px;text-align:center">${momRateStr}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
   }
 
   // 계좌별 월별 상세
@@ -5467,38 +5527,7 @@ function renderInvMonthly(){
     const ACCT_LIST2 = ["토스증권(본인)","신한(ISA)","토스(일이)","신한(일이)ISA","토스(수빈)","토스(유빈)","업비트"];
     detailEl.innerHTML = ACCT_LIST2.map(acct=>{
       const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isMonthPeriod(r.month)&&!HIDDEN_MO_INV.has(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
-      if(!rows.length) return '';
-      let prevR=null;
-      return `<div style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow-s)">
-        <div style="background:linear-gradient(90deg,var(--green),#00695C);color:#fff;padding:9px 14px;font-size:12px;font-weight:700">🏦 ${acct}</div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <table style="width:100%;border-collapse:collapse;min-width:320px">
-          <thead><tr style="background:#1A2B4A">
-            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px">기간</th>
-            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">현재자산</th>
-            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">손익금</th>
-            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익률</th>
-            <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center">전기대비</th>
-          </tr></thead>
-          <tbody>
-          ${rows.map((r,i)=>{
-            const prin=(r.depCum||0)-(r.wdCum||0);
-            const pnl=(r.curr||0)-prin;
-            const rate=prin?pnl/prin:0;
-            const mom=prevR!=null?r.curr-prevR:null;
-            const momStr=mom==null?'<span style="color:var(--sub)">—</span>':`<span style="color:${mom>=0?'var(--green)':'var(--red)'};font-weight:700">${mom>=0?'▲':'▼'} ${fmtN(Math.abs(mom))}</span>`;
-            prevR=r.curr;
-            return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-              <td style="padding:9px 14px;font-size:11px;font-weight:700">${fmtPeriod(r.month)}</td>
-              <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(r.curr)}</td>
-              <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${fmtN(pnl)}</td>
-              <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${rate>=0?'var(--green)':'var(--red)'}">${fmtP(rate)}</td>
-              <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
-            </tr>`;
-          }).join('')}
-          </tbody>
-        </table></div>
-      </div>`;
+      return renderAcctDetailTable('🏦 '+acct, rows, 'linear-gradient(90deg,var(--green),#00695C)', '기간');
     }).join('');
   }
 
@@ -5511,40 +5540,7 @@ function renderInvMonthly(){
     } else {
       weekDetailEl.innerHTML = accts.map(acct=>{
         const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isWeekPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
-        if(!rows.length) return '';
-        let prevR=null;
-        return `<div style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow-s)">
-          <div style="background:linear-gradient(90deg,#1565C0,#0D47A1);color:#fff;padding:9px 14px;font-size:12px;font-weight:700">🗓 ${acct}</div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-          <table style="width:100%;border-collapse:collapse;min-width:320px">
-            <thead><tr style="background:#1A2B4A">
-              <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px">주차</th>
-              <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">현재자산</th>
-              <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">투자원금</th>
-              <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">손익금</th>
-              <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익률</th>
-              <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center">전주대비</th>
-            </tr></thead>
-            <tbody>
-            ${rows.map((r,i)=>{
-              const prin=(r.depCum||0)-(r.wdCum||0);
-              const pnl=(r.curr||0)-prin;
-              const rate=prin?pnl/prin:0;
-              const mom=prevR!=null?r.curr-prevR:null;
-              const momStr=mom==null?'<span style="color:var(--sub)">—</span>':`<span style="color:${mom>=0?'var(--green)':'var(--red)'};font-weight:700">${mom>=0?'▲':'▼'} ${fmtN(Math.abs(mom))}</span>`;
-              prevR=r.curr;
-              return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-                <td style="padding:9px 14px;font-size:11px;font-weight:700;white-space:nowrap">${fmtPeriod(r.month)}</td>
-                <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(r.curr)}</td>
-                <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(prin)}</td>
-                <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${fmtN(pnl)}</td>
-                <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${rate>=0?'var(--green)':'var(--red)'}">${fmtP(rate)}</td>
-                <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
-              </tr>`;
-            }).join('')}
-            </tbody>
-          </table></div>
-        </div>`;
+        return renderAcctDetailTable('🗓 '+acct, rows, 'linear-gradient(90deg,#1565C0,#0D47A1)', '주차');
       }).join('');
     }
   }
