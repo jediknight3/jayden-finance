@@ -2353,7 +2353,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[] };
 let GAS_URL = '';
-const BUILD_DATE = '2026-05-07 17:01 KST';
+const BUILD_DATE = '2026-05-07 17:54 KST';
 let ANTHROPIC_KEY = '';
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
@@ -5571,7 +5571,7 @@ function renderInvHeatmap(){
   const el=document.getElementById('invHeatmap'); if(!el)return;
   const ACCTS3=["토스증권(본인)","신한(ISA)","토스(일이)","신한(일이)ISA",
     "토스(수빈)","토스(유빈)","업비트","퇴직연금","연금저축","IRP","연금저축(일이)","IRP(일이)"];
-  const allMonths=[...new Set(DB.invest.map(r=>r.month))].sort().filter(m=>!HIDDEN_MO_INV.has(m));
+  const allMonths=[...new Set(DB.invest.map(r=>r.month))].sort().filter(m=>isMonthPeriod(m)&&!HIDDEN_MO_INV.has(m));
   if(!allMonths.length){el.innerHTML='<div class="empty"><div class="empty-text">데이터 없음</div></div>';return;}
 
   // 색상 함수
