@@ -2344,7 +2344,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[] };
 let GAS_URL = '';
-const BUILD_DATE = '2026-05-07 06:10 KST';
+const BUILD_DATE = '2026-05-07 10:21 KST';
 let ANTHROPIC_KEY = '';
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
@@ -3510,13 +3510,16 @@ function renderInputPage(){
 let invDepItems=[{amt:0,memo:''}], invWdItems=[{amt:0,memo:''}];
 let invMode = 'month'; // 'month' | 'week'
 
-function isWeekPeriod(p){ return /^\d{4}-W\d{1,2}$/.test(String(p)); }
+function isWeekPeriod(p){ return /^\d{4}W\d{2}$/.test(String(p)); } // GAS-safe: "2026W19" (7chars)
 function isMonthPeriod(p){ return /^\d{4}-\d{2}$/.test(String(p)); }
-// "2026-W1" → "2026-W19" 복원 불가, DB 로드 시 정규화용
-function normalizeWeek(p){ if(!isWeekPeriod(p))return p; const [y,w]=p.split('-W'); return `${y}-W${w.padStart(2,'0')}`; }
+// 대시 포함 구형 포맷("2026-W19", "2026-W1") = GAS norm()이 손상시킨 데이터
+function isCorruptedWeek(p){ return /^\d{4}-W\d{1,2}$/.test(String(p)); }
+function normalizeWeek(p){ return p; } // 새 포맷은 이미 정규화됨
 
 function getWeekInfo(weekStr){
-  const [yearStr,wStr]=weekStr.split('-W');
+  // "2026W19" 포맷 파싱
+  const s=String(weekStr), wIdx=s.indexOf('W');
+  const yearStr=s.slice(0,wIdx), wStr=s.slice(wIdx+1);
   const y=parseInt(yearStr), w=parseInt(wStr);
   function thursdayOf(yr,wk){
     const jan4=new Date(yr,0,4), dow=jan4.getDay()||7;
@@ -3549,10 +3552,9 @@ function fmtPeriod(p){
 
 function getInvPeriod(){
   if(invMode==='week'){
-    const v=document.getElementById('inv-week').value;
+    const v=document.getElementById('inv-week').value; // browser: "2026-W19"
     if(!v) return '';
-    // <input type="week"> returns "2025-W18" format directly
-    return v;
+    return v.replace('-W','W'); // → "2026W19" (7chars, GAS-safe)
   }
   return document.getElementById('inv-month').value;
 }
@@ -3595,7 +3597,7 @@ function updateWeekLabel(){
   if(!lbl) return;
   if(invMode==='week'&&wInp&&wInp.value){
     lbl.style.display='block';
-    lbl.textContent='📅 '+fmtPeriod(wInp.value);
+    lbl.textContent='📅 '+fmtPeriod(wInp.value.replace('-W','W'));
   } else {
     lbl.style.display='none';
   }
@@ -3744,7 +3746,7 @@ function clearInvForm(){
   document.getElementById('inv-loaded-badge').style.display='none';
 }
 
-function isCorruptedWeek(p){ return /^\d{4}-W\d$/.test(String(p)); } // 1자리 주차 = GAS 손상
+// isCorruptedWeek는 위 isWeekPeriod 정의 근처에 이동됨
 function renderInvLog(){
   const fa=document.getElementById('inv-filter-acct');
   if(fa){
@@ -3780,7 +3782,7 @@ async function deleteCorruptedWeeks(){
   if(!corrupted.length)return;
   if(!confirm(`손상된 주별 데이터 ${corrupted.length}건을 삭제할까요?\n삭제 후 올바른 주차로 다시 입력해주세요.`))return;
   for(const r of corrupted) await gasDelete('invest',r.acct+'|'+r.month);
-  renderAll(); showToast(`🗑 ${corrupted.length}건 삭제 완료. W19로 다시 입력해주세요.`,'success');
+  renderAll(); showToast(`🗑 ${corrupted.length}건 삭제 완료. 주별 탭에서 다시 입력해주세요.`,'success');
 }
 
 // ── 계좌 입력 ─────────────────────────────────────────────
