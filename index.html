@@ -2559,7 +2559,7 @@ async function syncAll(){
       const r = await gasReq({sheet:s});
       if(r.ok) DB[s]=r.data;
     }
-    saveCache(); renderAll();
+    normalizeInvestAccts(); saveCache(); renderAll();
     setLoading(false); showToast('✅ 동기화 완료!','success');
   }catch(e){
     setLoading(false); showToast('동기화 실패: '+e.message,'error');
@@ -5427,34 +5427,49 @@ function showBulkPreview(period, items){
   const wrap=document.getElementById('bulk-preview-wrap');
   const title=document.getElementById('bulk-preview-title');
   const tbl=document.getElementById('bulk-preview-table');
-  // 중복값 감지 (같은 금액이 2개 이상이면 AI 오추출 의심)
   const currCounts={};
   items.forEach(it=>{ currCounts[it.curr]=(currCounts[it.curr]||0)+1; });
+  // 계좌 드롭다운 옵션 (원본명 기준)
+  const sel=document.getElementById('inv-acct');
+  const acctOpts=sel?Array.from(sel.options).filter(o=>o.value).map(o=>
+    `<option value="${o.value.replace(/"/g,'&quot;')}">${getAcctDisplay(o.value)}</option>`
+  ).join(''):'';
   title.textContent=`${fmtPeriod(period)} — ${items.length}개 계좌 추출됨`;
-  tbl.innerHTML=`<div style="border-radius:8px;overflow:hidden;border:1px solid var(--gray-200)">
-  <table style="width:100%;border-collapse:collapse;font-size:12px">
+  tbl.innerHTML=`<div style="font-size:11px;color:var(--sub);margin-bottom:6px">AI가 추출한 계좌명이 정확하지 않으면 드롭다운으로 직접 계좌를 선택하세요</div>
+  <div style="border-radius:8px;overflow:hidden;border:1px solid var(--gray-200)">
+  <table style="width:100%;border-collapse:collapse;font-size:11px">
     <thead><tr style="background:#1A2B4A;color:#fff">
-      <th style="padding:7px 10px;text-align:left">계좌</th>
-      <th style="padding:7px 10px;text-align:right">현재자산</th>
-      <th style="padding:7px 10px;text-align:center">기존</th>
+      <th style="padding:7px 8px;text-align:left">계좌 매핑</th>
+      <th style="padding:7px 8px;text-align:right">현재자산</th>
       <th style="padding:7px 6px;text-align:center"></th>
     </tr></thead>
     <tbody>${items.map((it,i)=>{
-      const existing=DB.invest.find(r=>r.acct===it.acct&&r.month===period);
-      const existStr=existing?fmtN(existing.curr)+'원':'신규';
       const isDup=currCounts[it.curr]>1;
       const rowBg=isDup?'background:#FFF8E1':i%2?'':'background:var(--gray-50)';
-      const dupWarn=isDup?'<span style="font-size:9px;color:#E65100;font-weight:700">⚠️중복</span>':'';
+      const dupWarn=isDup?' ⚠️':'';
       return `<tr style="${rowBg}" id="bulk-row-${i}">
-        <td style="padding:7px 10px;font-weight:700">${getAcctDisplay(it.acct)}${dupWarn}</td>
-        <td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--primary)">${fmtN(it.curr)}원</td>
-        <td style="padding:7px 10px;text-align:center;font-size:11px;color:var(--sub)">${existStr}</td>
-        <td style="padding:7px 6px;text-align:center"><button onclick="removeBulkRow(${i})" style="border:none;background:var(--red-l,#FFF0F1);color:var(--red);padding:2px 7px;border-radius:5px;font-size:10px;cursor:pointer">✕</button></td>
+        <td style="padding:6px 8px">
+          <select id="bulk-acct-sel-${i}" style="width:100%;padding:4px 6px;border:1px solid var(--gray-200);border-radius:6px;font-size:11px;background:var(--card);color:var(--text)">
+            <option value="">-- 계좌 선택 --</option>
+            ${acctOpts}
+          </select>
+          <div style="font-size:9px;color:var(--sub);margin-top:2px">AI추출: ${it.acct}${dupWarn}</div>
+        </td>
+        <td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--primary);white-space:nowrap">${fmtN(it.curr)}원</td>
+        <td style="padding:6px 6px;text-align:center"><button onclick="removeBulkRow(${i})" style="border:none;background:var(--red-l,#FFF0F1);color:var(--red);padding:2px 7px;border-radius:5px;font-size:10px;cursor:pointer">✕</button></td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>`;
   wrap._period=period;
   wrap.style.display='block';
+  // 드롭다운 자동 선택 (best match)
+  const map=buildDisplayToOrigMap();
+  items.forEach((it,i)=>{
+    const norm=normalizeAcctStr(it.acct);
+    const matched=map[it.acct]||map[norm]||it.acct;
+    const sel2=document.getElementById(`bulk-acct-sel-${i}`);
+    if(sel2) sel2.value=matched;
+  });
 }
 function removeBulkRow(idx){
   pendingBulkData.splice(idx,1);
@@ -5469,14 +5484,18 @@ async function confirmBulkSave(){
   const isWeek=isWeekPeriod(period);
   const sameType=isWeek?isWeekPeriod:isMonthPeriod;
   let saved=0;
-  for(const item of pendingBulkData){
-    const {acct, curr}=item;
-    const existing=DB.invest.find(r=>r.acct===acct&&r.month===period);
+  for(let i=0;i<pendingBulkData.length;i++){
+    const selEl=document.getElementById(`bulk-acct-sel-${i}`);
+    const acct=selEl?selEl.value:pendingBulkData[i].acct;
+    if(!acct){ showToast(`행 ${i+1}: 계좌를 선택해주세요`,'warn'); return; }
+    const curr=pendingBulkData[i].curr;
+    const acctDisp=getAcctDisplay(acct);
+    const existing=DB.invest.find(r=>(r.acct===acct||r.acct===acctDisp)&&r.month===period);
     let rec;
     if(existing){
-      rec={...existing, curr};
+      rec={...existing, acct, curr}; // acct는 항상 원본명으로 정규화
     } else {
-      const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period)
+      const prevRows=DB.invest.filter(r=>(r.acct===acct||r.acct===acctDisp)&&sameType(r.month)&&r.month<period)
         .sort((a,b)=>a.month.localeCompare(b.month));
       let prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
       if(!prevLast&&isWeek){
