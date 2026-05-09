@@ -2484,6 +2484,31 @@ function applyAcctAliasesToDropdown(){
   if(!sel) return;
   Array.from(sel.options).forEach(opt=>{ if(opt.value) opt.textContent = ACCT_ALIASES[opt.value]||opt.value; });
 }
+function normalizeAcctStr(s){ return (s||'').replace(/\s*\(\s*/g,'(').replace(/\s*\)\s*/g,')').trim(); }
+function buildDisplayToOrigMap(){
+  const sel = document.getElementById('inv-acct');
+  if(!sel) return {};
+  const map = {};
+  Array.from(sel.options).filter(o=>o.value).forEach(o=>{
+    const orig = o.value;
+    map[orig] = orig;
+    map[normalizeAcctStr(orig)] = orig;
+    const disp = getAcctDisplay(orig);
+    map[disp] = orig;
+    map[normalizeAcctStr(disp)] = orig;
+  });
+  return map;
+}
+function normalizeInvestAccts(){
+  const map = buildDisplayToOrigMap();
+  if(!Object.keys(map).length) return;
+  let changed = false;
+  DB.invest.forEach(r=>{
+    const mapped = map[r.acct] || map[normalizeAcctStr(r.acct)];
+    if(mapped && mapped !== r.acct){ r.acct = mapped; changed = true; }
+  });
+  if(changed) saveCache();
+}
 
 // ── API ─────────────────────────────────────────────────
 function setLoading(on, msg=''){
@@ -3736,7 +3761,8 @@ function onInvAcctChange(){
   const acct=document.getElementById('inv-acct').value;
   const period=getInvPeriod();
   if(!acct||!period)return;
-  const rec=DB.invest.find(r=>r.acct===acct&&r.month===period);
+  const acctDisp=getAcctDisplay(acct);
+  const rec=DB.invest.find(r=>(r.acct===acct||r.acct===acctDisp)&&r.month===period);
   const badge=document.getElementById('inv-loaded-badge');
   if(rec){
     setComma('inv-curr',rec.curr);
@@ -5324,20 +5350,16 @@ async function onBulkImgSelect(input){
   const knownAccts = sel ? Array.from(sel.options).filter(o=>o.value).map(o=>o.value) : [];
 
   try{
-    // 표시명 → 원본명 역매핑 (AI가 표시명으로 반환해도 원본명으로 정규화)
-    const displayToOrig = {};
-    knownAccts.forEach(orig=>{
-      displayToOrig[orig] = orig;
-      const display = getAcctDisplay(orig);
-      if(display !== orig) displayToOrig[display] = orig;
-    });
+    // 표시명·공백변형 → 원본명 역매핑 (AI 반환값 정규화)
+    const displayToOrig = buildDisplayToOrigMap();
 
     for(const file of Array.from(input.files)){
       const b64 = await fileToBase64(file);
       const mediaType = file.type||'image/jpeg';
       const result = await parseBulkAssetImage(b64, mediaType, knownAccts);
       result.forEach(item=>{
-        const acct = displayToOrig[item.acct] || item.acct; // 표시명이면 원본명으로
+        const norm = normalizeAcctStr(item.acct);
+        const acct = displayToOrig[item.acct] || displayToOrig[norm] || item.acct;
         const existing = pendingBulkData.find(p=>p.acct===acct);
         if(existing) existing.curr=item.curr; else pendingBulkData.push({acct, curr:item.curr});
       });
@@ -5353,18 +5375,23 @@ async function onBulkImgSelect(input){
 }
 
 async function parseBulkAssetImage(b64, mediaType, knownAccts){
-  const acctList = knownAccts.map(a=>`- 원본명: "${a}" | 표시명: "${getAcctDisplay(a)}"`).join('\n');
+  const acctList = knownAccts.map(a=>{
+    // 이전 잔액 힌트 (규모 파악용)
+    const latest = DB.invest.filter(r=>r.acct===a&&r.curr!=null).sort((a,b)=>b.month.localeCompare(a.month))[0];
+    const hint = latest ? ` | 이전잔액: 약 ${Math.round(latest.curr/10000)}만원` : '';
+    return `- 원본명: "${a}" | 표시명: "${getAcctDisplay(a)}"${hint}`;
+  }).join('\n');
   const prompt = `이 이미지는 증권/금융 앱의 계좌 현황 화면입니다.
 아래 계좌 목록 중 이미지에서 확인되는 계좌의 현재 자산(평가금액·총자산·현재잔액)을 추출해주세요.
 
-【계좌 목록 (원본명 | 표시명)】
+【계좌 목록 (원본명 | 표시명 | 이전잔액 참고)】
 ${acctList}
 
 【중요 규칙】
 - acct 값은 반드시 원본명을 그대로 사용 (표시명 아님)
 - 이미지의 계좌명이 표시명과 같으면 원본명으로 변환해서 출력
-- 비슷한 이름 계좌(예: "연금저축"과 "연금저축(일이)")는 서로 다른 계좌이며 반드시 다른 금액
-- 각 계좌는 정확히 1번만 포함, 같은 금액이 두 항목에 들어가면 안 됨
+- 비슷한 이름 계좌(예: "연금저축"과 "연금저축(일이)")는 서로 다른 계좌 — 이전잔액 규모를 참고해 올바른 금액 매핑
+- 각 계좌는 정확히 1번만 포함, 동일 금액이 두 항목에 들어가면 안 됨
 - 이미지에서 명확히 확인되지 않는 계좌는 제외
 - 금액은 숫자만 (쉼표·원·공백 제거)
 
@@ -5797,11 +5824,12 @@ async function init(){
   if(!DB.fixed) DB.fixed=[];
   if(!DB.install) DB.install=[];
 
+  applyAcctAliasesToDropdown();
+  normalizeInvestAccts(); // 표시명으로 저장된 기존 레코드를 원본명으로 마이그레이션
   renderAll();
   renderInvRows();
   renderCfCatOptions();
   renderSettings();
-  applyAcctAliasesToDropdown();
 
   // GAS URL 있으면 항상 최신 데이터로 덮어씌우기 (캐시 무시)
   if(GAS_URL){
@@ -5836,7 +5864,7 @@ async function init(){
           updated=true;
         }
       }
-      if(updated){ saveCache(); renderAll(); }
+      if(updated){ normalizeInvestAccts(); saveCache(); renderAll(); }
       setLoading(false);
     }catch(e){
       setLoading(false);
