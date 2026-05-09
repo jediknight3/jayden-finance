@@ -1279,8 +1279,12 @@ body {
           <div id="inv-week-label" style="display:none;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--blue-50,#EFF6FF);border-radius:6px"></div>
         </div>
         <div class="form-group">
-          <label class="form-label">현재 자산 (원)</label>
+          <label class="form-label" style="display:flex;align-items:center;justify-content:space-between">
+            <span>현재 자산 (원)</span>
+            <button onclick="document.getElementById('inv-curr-img-input').click()" style="border:none;background:var(--primary-l);color:var(--primary);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">📷 이미지입력</button>
+          </label>
           <input type="text" class="form-input num" id="inv-curr" placeholder="0" inputmode="numeric">
+          <input type="file" accept="image/*" id="inv-curr-img-input" style="display:none" onchange="onInvCurrImgSelect(this)">
         </div>
       </div>
       <div id="inv-loaded-badge" style="display:none;margin-bottom:12px"></div>
@@ -2065,6 +2069,15 @@ body {
       </div>
     </div>
 
+    <!-- 투자 계좌명 변경 -->
+    <div class="card">
+      <div style="padding:16px 20px 10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;font-weight:700">🏦 투자 계좌명 변경</span>
+        <button onclick="renderAcctAliasEditor()" style="border:none;background:var(--primary-l);color:var(--primary);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">편집</button>
+      </div>
+      <div id="acct-alias-wrap" style="padding:0 20px 16px;font-size:12px;color:var(--sub)">버튼을 눌러 계좌 표시명을 편집하세요</div>
+    </div>
+
     <!-- Apps Script 코드 -->
     <div class="card">
       <div style="padding:16px 20px 10px;display:flex;align-items:center;justify-content:space-between">
@@ -2424,6 +2437,7 @@ let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], inst
 let GAS_URL = '';
 const BUILD_DATE = '2026-05-09 11:10 KST';
 let ANTHROPIC_KEY = '';
+let ACCT_ALIASES = {}; // { originalName: displayAlias }
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
 function loadCache(){
@@ -2434,6 +2448,14 @@ function saveGasUrlLocal(){ try{ localStorage.setItem('jf_gas', GAS_URL); }catch
 function loadGasUrlLocal(){ try{ GAS_URL=localStorage.getItem('jf_gas')||''; }catch(e){} }
 function saveAnthropicKeyLocal(){ try{ localStorage.setItem('jf_anthropic', ANTHROPIC_KEY); }catch(e){} }
 function loadAnthropicKeyLocal(){ try{ ANTHROPIC_KEY=localStorage.getItem('jf_anthropic')||''; }catch(e){} }
+function saveAcctAliases(){ try{ localStorage.setItem('jf_acct_aliases', JSON.stringify(ACCT_ALIASES)); }catch(e){} }
+function loadAcctAliases(){ try{ const s=localStorage.getItem('jf_acct_aliases'); if(s) ACCT_ALIASES=JSON.parse(s); }catch(e){} }
+function getAcctDisplay(acct){ return (acct && ACCT_ALIASES[acct]) || acct || ''; }
+function applyAcctAliasesToDropdown(){
+  const sel = document.getElementById('inv-acct');
+  if(!sel) return;
+  Array.from(sel.options).forEach(opt=>{ if(opt.value) opt.textContent = ACCT_ALIASES[opt.value]||opt.value; });
+}
 
 // ── API ─────────────────────────────────────────────────
 function setLoading(on, msg=''){
@@ -3846,7 +3868,7 @@ function renderInvLog(){
     const rate=prin&&pnl!=null?pnl/prin:null;
     return `<div class="list-item" style="${i%2?'':'background:var(--gray-50)'}${corrupted?';border-left:3px solid var(--red)':''}">
       <div class="list-body">
-        <div class="list-name">${r.acct} <span style="font-size:11px;color:${corrupted?'var(--red)':'var(--sub)'};font-weight:400">${corrupted?'⚠️ 손상됨 (재입력 필요)':fmtPeriod(r.month)}</span></div>
+        <div class="list-name">${getAcctDisplay(r.acct)} <span style="font-size:11px;color:${corrupted?'var(--red)':'var(--sub)'};font-weight:400">${corrupted?'⚠️ 손상됨 (재입력 필요)':fmtPeriod(r.month)}</span></div>
         <div class="list-sub">입금 ${fmtN(r.dep)} · 출금 ${fmtN(r.wd)}</div>
       </div>
       <div class="list-right">
@@ -4185,6 +4207,29 @@ function renderSettings(){
   if(aks) aks.textContent=ANTHROPIC_KEY?'🟢 직접 연동 활성':'🔴 미설정';
   const bd=document.getElementById('build-date-display');
   if(bd) bd.textContent=BUILD_DATE;
+}
+function renderAcctAliasEditor(){
+  const wrap = document.getElementById('acct-alias-wrap');
+  if(!wrap) return;
+  const sel = document.getElementById('inv-acct');
+  const accts = sel
+    ? Array.from(sel.options).filter(o=>o.value).map(o=>o.value)
+    : [...new Set(DB.invest.map(r=>r.acct))].sort();
+  if(!accts.length){ wrap.innerHTML='<div style="color:var(--sub)">계좌 없음</div>'; return; }
+  wrap.innerHTML = accts.map(acct=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:11px;color:var(--sub);min-width:100px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${acct}">${acct}</span>
+      <span style="color:var(--gray-300);font-size:10px">→</span>
+      <input type="text" value="${(ACCT_ALIASES[acct]||'').replace(/"/g,'&quot;')}" placeholder="${acct.replace(/"/g,'&quot;')}"
+        data-orig="${acct.replace(/"/g,'&quot;')}"
+        style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--gray-200);border-radius:7px;font-size:11px;background:var(--card);color:var(--text)"
+        oninput="if(this.value.trim()) ACCT_ALIASES[this.dataset.orig]=this.value.trim(); else delete ACCT_ALIASES[this.dataset.orig]">
+    </div>
+  `).join('')+
+  `<button onclick="saveAcctAliases();applyAcctAliasesToDropdown();renderAll();showToast('✅ 계좌 표시명 저장 완료','success')"
+    style="width:100%;padding:8px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px">
+    💾 저장
+  </button>`;
 }
 function saveGasUrl(){
   const url=document.getElementById('gas-url-input').value.trim();
@@ -5187,6 +5232,50 @@ function fileToBase64(file){
   });
 }
 
+async function onInvCurrImgSelect(input){
+  if(!input.files.length) return;
+  if(!ANTHROPIC_KEY){ showToast('설정 탭에서 Anthropic API 키를 먼저 입력해주세요','warn'); input.value=''; return; }
+  const btn = document.querySelector('#inv-curr-img-input + button') || null;
+  showToast('🔍 이미지 분석 중...','info');
+  try{
+    const file = input.files[0];
+    const b64 = await fileToBase64(file);
+    const mediaType = file.type || 'image/jpeg';
+    const prompt = `이 이미지는 증권/금융 앱의 계좌 화면입니다.
+화면에 표시된 총 자산 금액(평가금액, 총자산, 총평가금액, 현재잔액, 계좌잔액, 합계 등)을 하나만 추출해주세요.
+가장 크게 표시된 금액이나 "총" 또는 "합계"가 붙은 금액을 우선 선택하세요.
+숫자만 출력 (쉼표·원·공백 없이, 예: 12345678):`;
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':ANTHROPIC_KEY,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:50,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
+          {type:'text',text:prompt}
+        ]}]
+      })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error?.message||'API 오류');
+    const text = (data.content?.[0]?.text||'').trim();
+    const numStr = text.replace(/[^0-9]/g,'');
+    if(!numStr) throw new Error('금액을 찾지 못했습니다: '+text.slice(0,60));
+    setComma('inv-curr', Number(numStr));
+    showToast('✅ '+fmtN(Number(numStr))+'원 입력됨','success');
+  }catch(e){
+    showToast('❌ '+e.message,'error');
+  }finally{
+    input.value='';
+  }
+}
+
 async function parseHoldingsImage(b64, mediaType){
   const prompt = `이 이미지는 증권 앱의 보유종목 화면입니다.
 화면에 보이는 모든 종목을 JSON 배열로 추출해주세요.
@@ -5506,6 +5595,7 @@ function clearAIChat(){
 async function init(){
   loadGasUrlLocal();
   loadAnthropicKeyLocal();
+  loadAcctAliases();
   loadCache();
 
   // 캐시 없으면 초기 투자 데이터 로드
@@ -5517,6 +5607,7 @@ async function init(){
   renderInvRows();
   renderCfCatOptions();
   renderSettings();
+  applyAcctAliasesToDropdown();
 
   // GAS URL 있으면 항상 최신 데이터로 덮어씌우기 (캐시 무시)
   if(GAS_URL){
@@ -5784,7 +5875,7 @@ function renderInvSummary(){
         const gc={'g-best':'#FFFDE7','g-good':'#E8F5E9','g-warn':'#FFF3E0','g-bad':'#FFEBEE','g-wat':'#ECEFF1'};
         const fc={'g-best':'#E65100','g-good':'#2E7D32','g-warn':'#E65100','g-bad':'#C62828','g-wat':'#546E7A'};
         return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-          <td style="padding:10px 10px;font-size:11px;font-weight:600;padding-left:14px">${a.acct}</td>
+          <td style="padding:10px 10px;font-size:11px;font-weight:600;padding-left:14px">${getAcctDisplay(a.acct)}</td>
           <td style="padding:10px 10px;font-size:11px;text-align:right">${fmtN(a.prin)}</td>
           <td style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(a.curr)}</td>
           <td style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700;color:${a.pnl>=0?'var(--green)':'var(--red)'}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</td>
@@ -5813,7 +5904,7 @@ function renderInvSummary(){
       const bg=a.rate>0.3?'#F0FBF8':a.rate<0?'#FFF8F8':'var(--card)';
       const pW=Math.min(Math.abs(a.rate)*100,100);
       return `<div style="background:${bg};border-radius:var(--radius-m);padding:13px;box-shadow:var(--shadow-s)">
-        <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">${a.acct}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">${getAcctDisplay(a.acct)}</div>
         <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--sub)">현재자산</span><span style="font-weight:700;color:${col}">${fmtN(a.curr)}</span></div>
         <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--sub)">손익금</span><span style="font-weight:700;color:${col}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</span></div>
         <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:6px"><span style="color:var(--sub)">수익률</span><span style="font-size:14px;font-weight:800;color:${col}">${fmtP(a.rate)}</span></div>
@@ -5833,7 +5924,7 @@ function renderInvBars(elId, all){
     const pct = Math.abs(a.rate)/maxR*100;
     const col = a.rate>=0?'#05C072':'#F04452';
     return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <div style="font-size:10px;color:var(--text);min-width:88px;text-align:right;flex-shrink:0">${a.acct.replace('(본인)','').replace('(일이)','2')}</div>
+      <div style="font-size:10px;color:var(--text);min-width:88px;text-align:right;flex-shrink:0">${getAcctDisplay(a.acct).replace('(본인)','').replace('(일이)','2')}</div>
       <div style="flex:1;background:var(--gray-200);border-radius:4px;height:18px;overflow:hidden">
         <div style="height:100%;border-radius:4px;background:${col};width:${Math.max(pct,2)}%"></div>
       </div>
@@ -5983,7 +6074,7 @@ function renderInvMonthly(){
     const ACCT_LIST2 = ["토스증권(본인)","신한(ISA)","토스(일이)","신한(일이)ISA","토스(수빈)","토스(유빈)","업비트"];
     detailEl.innerHTML = ACCT_LIST2.map(acct=>{
       const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isMonthPeriod(r.month)&&!HIDDEN_MO_INV.has(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
-      return renderAcctDetailTable('🏦 '+acct, rows, 'linear-gradient(90deg,var(--green),#00695C)', '기간');
+      return renderAcctDetailTable('🏦 '+getAcctDisplay(acct), rows, 'linear-gradient(90deg,var(--green),#00695C)', '기간');
     }).join('');
   }
 
@@ -5996,7 +6087,7 @@ function renderInvMonthly(){
     } else {
       weekDetailEl.innerHTML = accts.map(acct=>{
         const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isWeekPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
-        return renderAcctDetailTable('🗓 '+acct, rows, 'linear-gradient(90deg,#1565C0,#0D47A1)', '주차');
+        return renderAcctDetailTable('🗓 '+getAcctDisplay(acct), rows, 'linear-gradient(90deg,#1565C0,#0D47A1)', '주차');
       }).join('');
     }
   }
@@ -6096,7 +6187,7 @@ function renderInvHeatmap(){
     const cumTxt = cumRate!=null?(cumRate>=0?'+':'')+(cumRate*100).toFixed(0)+'%':'—';
     const cumColor = cumRate==null?'#aaa':cumRate>=0?'#05C072':'#F04452';
 
-    const acctShort = acct.replace('(본인)','').replace('(일이)','2').replace('신한(일이)ISA','신한2ISA');
+    const acctShort = getAcctDisplay(acct).replace('(본인)','').replace('(일이)','2').replace('신한(일이)ISA','신한2ISA');
 
     h += `<div style="display:flex;margin-bottom:3px;align-items:center">
       <div style="width:90px;flex-shrink:0;font-size:9px;font-weight:700;color:#333;text-align:right;padding-right:8px;line-height:1.2">${acctShort}</div>
