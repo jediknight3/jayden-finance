@@ -881,13 +881,13 @@ body {
             <div style="display:flex;gap:8px;margin-bottom:10px">
               <select id="holdings-acct-sel" class="form-input" style="flex:1;font-size:13px">
                 <option value="">계좌 선택</option>
-                <option>토스증권(본인)</option>
-                <option>신한(ISA)</option>
-                <option>토스(일이)</option>
-                <option>신한(일이)ISA</option>
-                <option>토스(수빈)</option>
-                <option>토스(유빈)</option>
-                <option>업비트</option>
+                <option value="토스증권(본인)">토스증권(본인)</option>
+                <option value="신한(ISA)">신한(ISA)</option>
+                <option value="토스(일이)">토스(일이)</option>
+                <option value="신한(일이)ISA">신한(일이)ISA</option>
+                <option value="토스(수빈)">토스(수빈)</option>
+                <option value="토스(유빈)">토스(유빈)</option>
+                <option value="업비트">업비트</option>
               </select>
               <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--primary);color:#fff;border-radius:var(--radius);font-size:13px;font-weight:700;cursor:pointer;padding:10px 0">
                 📸 이미지 선택
@@ -1263,12 +1263,12 @@ body {
         <label class="form-label">계좌 선택</label>
         <select class="form-input form-select" id="inv-acct" onchange="onInvAcctChange()">
           <option value="">— 계좌 선택 —</option>
-          <option>토스증권(본인)</option><option>신한(ISA)</option>
-          <option>토스(일이)</option><option>신한(일이)ISA</option>
-          <option>토스(수빈)</option><option>토스(유빈)</option>
-          <option>연금저축</option><option>IRP</option>
-          <option>연금저축(일이)</option><option>IRP(일이)</option>
-          <option>업비트</option><option>퇴직연금</option>
+          <option value="토스증권(본인)">토스증권(본인)</option><option value="신한(ISA)">신한(ISA)</option>
+          <option value="토스(일이)">토스(일이)</option><option value="신한(일이)ISA">신한(일이)ISA</option>
+          <option value="토스(수빈)">토스(수빈)</option><option value="토스(유빈)">토스(유빈)</option>
+          <option value="연금저축">연금저축</option><option value="IRP">IRP</option>
+          <option value="연금저축(일이)">연금저축(일이)</option><option value="IRP(일이)">IRP(일이)</option>
+          <option value="업비트">업비트</option><option value="퇴직연금">퇴직연금</option>
         </select>
       </div>
       <div class="form-row">
@@ -2106,6 +2106,18 @@ body {
       <div id="acct-alias-wrap" style="padding:0 20px 16px;font-size:12px;color:var(--sub)">버튼을 눌러 계좌 표시명을 편집하세요</div>
     </div>
 
+    <!-- 계좌명 정규화 (데이터 복구) -->
+    <div class="card">
+      <div style="padding:16px 20px 10px">
+        <span style="font-size:14px;font-weight:700">🔧 계좌명 데이터 복구</span>
+        <div style="font-size:11px;color:var(--sub);margin-top:6px">표시명으로 저장된 투자 기록을 원본 계좌명으로 일괄 정규화하고 서버에도 반영합니다. 데이터가 불러와지지 않을 때 사용하세요.</div>
+      </div>
+      <div style="padding:0 20px 16px">
+        <button onclick="repairInvestAcctNames()" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:700;cursor:pointer">🔧 계좌명 일괄 정규화 (서버 반영)</button>
+        <div id="repair-status" style="font-size:11px;color:var(--sub);margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
     <!-- Apps Script 코드 -->
     <div class="card">
       <div style="padding:16px 20px 10px;display:flex;align-items:center;justify-content:space-between">
@@ -2482,7 +2494,12 @@ function getAcctDisplay(acct){ return (acct && ACCT_ALIASES[acct]) || acct || ''
 function applyAcctAliasesToDropdown(){
   const sel = document.getElementById('inv-acct');
   if(!sel) return;
-  Array.from(sel.options).forEach(opt=>{ if(opt.value) opt.textContent = ACCT_ALIASES[opt.value]||opt.value; });
+  Array.from(sel.options).forEach(opt=>{
+    const orig = opt.getAttribute('value') || opt.value;
+    if(!orig) return;
+    opt.setAttribute('value', orig); // pin so textContent change doesn't affect .value
+    opt.textContent = ACCT_ALIASES[orig] || orig;
+  });
 }
 function normalizeAcctStr(s){ return (s||'').replace(/\s*\(\s*/g,'(').replace(/\s*\)\s*/g,')').trim(); }
 function buildDisplayToOrigMap(){
@@ -2508,6 +2525,37 @@ function normalizeInvestAccts(){
     if(mapped && mapped !== r.acct){ r.acct = mapped; changed = true; }
   });
   if(changed) saveCache();
+}
+
+async function repairInvestAcctNames(){
+  const statusEl = document.getElementById('repair-status');
+  if(statusEl){ statusEl.style.display='block'; statusEl.textContent='정규화 중...'; }
+  const map = buildDisplayToOrigMap();
+  const toFix = DB.invest.filter(r=>{
+    const mapped = map[r.acct] || map[normalizeAcctStr(r.acct)];
+    return mapped && mapped !== r.acct;
+  });
+  if(!toFix.length){
+    if(statusEl) statusEl.textContent='✅ 모든 계좌명이 이미 정상입니다.';
+    showToast('✅ 정규화할 항목 없음','success'); return;
+  }
+  normalizeInvestAccts();
+  if(!GAS_URL){
+    if(statusEl) statusEl.textContent=`✅ 로컬 ${toFix.length}건 정규화 완료 (서버 URL 없음)`;
+    showToast('✅ 로컬 정규화 완료','success'); return;
+  }
+  let done=0;
+  for(const orig of toFix){
+    const mapped = map[orig.acct] || map[normalizeAcctStr(orig.acct)] || orig.acct;
+    // delete old display-name record from GAS
+    try{ await gasReq({sheet:'invest', action:'delete', id: orig.acct+'|'+orig.month}); }catch(e){}
+    // upsert normalized record
+    const fixed = {...orig, acct: mapped};
+    try{ await gasReq({sheet:'invest', action:'upsert', data:fixed}); done++; }catch(e){}
+    if(statusEl) statusEl.textContent=`진행 중... ${done}/${toFix.length}`;
+  }
+  if(statusEl) statusEl.textContent=`✅ ${done}/${toFix.length}건 서버 반영 완료`;
+  showToast(`✅ 계좌명 정규화 ${done}건 완료`,'success');
 }
 
 // ── API ─────────────────────────────────────────────────
@@ -3762,7 +3810,8 @@ function onInvAcctChange(){
   const period=getInvPeriod();
   if(!acct||!period)return;
   const acctDisp=getAcctDisplay(acct);
-  const rec=DB.invest.find(r=>(r.acct===acct||r.acct===acctDisp)&&r.month===period);
+  const variants=new Set([acct,acctDisp,normalizeAcctStr(acct),normalizeAcctStr(acctDisp)]);
+  const rec=DB.invest.find(r=>variants.has(r.acct)&&r.month===period);
   const badge=document.getElementById('inv-loaded-badge');
   if(rec){
     setComma('inv-curr',rec.curr);
