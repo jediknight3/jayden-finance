@@ -536,3 +536,1064 @@ body {
 }
 </style>
 </head>
+<body>
+
+<!-- 헤더 -->
+<div class="hdr">
+  <div class="hdr-logo">JAYDEN FINANCE</div>
+  <div class="hdr-right">
+    <div id="syncStatus" style="display:none;align-items:center;gap:5px">
+      <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
+      <span id="syncMsg" style="font-size:11px;color:var(--sub)"></span>
+    </div>
+    <button class="hdr-sync" onclick="syncAll()" title="동기화">🔄</button>
+    <button class="hdr-sync" id="hdr-hamburger" onclick="openNavSheet()" title="메뉴" style="font-size:18px;font-weight:700;letter-spacing:-1px">≡</button>
+  </div>
+</div>
+
+<!-- 메인 -->
+<div class="main">
+
+<!-- ═══════════════════════════════════
+     🏠 홈 — 순자산 대시보드
+     ═══════════════════════════════════ -->
+<div id="page-home" class="page active">
+  <div class="page-inner">
+
+  <!-- 순자산 히어로 -->
+  <div class="hero-card">
+    <div class="hero-label">총 순자산</div>
+    <div class="hero-value" id="hw-net">계산중...</div>
+    <div class="hero-grid">
+      <div class="hero-item">
+        <div class="hero-item-label">총 자산</div>
+        <div class="hero-item-value" id="hw-total">—</div>
+      </div>
+      <div class="hero-item">
+        <div class="hero-item-label">총 부채</div>
+        <div class="hero-item-value neg" id="hw-debt">—</div>
+      </div>
+      <div class="hero-item">
+        <div class="hero-item-label">이번달 수입</div>
+        <div class="hero-item-value pos" id="hw-income">—</div>
+      </div>
+      <div class="hero-item">
+        <div class="hero-item-label">이번달 지출</div>
+        <div class="hero-item-value neg" id="hw-expense">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 자산 + 부채 + 현금흐름 — 데스크탑에서 2컬럼 -->
+  <div class="home-grid" style="padding:0 20px">
+  <div>
+  <!-- 자산 breakdown -->
+  <div style="margin-bottom:12px">
+    <div class="section-title" style="padding:16px 0 8px">자산 구성</div>
+    <div class="card">
+      <div class="list-item" onclick="goPage('assets')">
+        <div class="list-icon" style="background:#EBF3FF">📈</div>
+        <div class="list-body">
+          <div class="list-name">투자자산</div>
+          <div class="list-sub" id="hw-inv-sub">—</div>
+        </div>
+        <div class="list-right">
+          <div class="list-amount pos" id="hw-inv">—</div>
+          <div class="list-rate pos" id="hw-inv-rate">—</div>
+        </div>
+      </div>
+      <div class="list-item" onclick="goPage('assets')">
+        <div class="list-icon" style="background:#E8FAF3">🏦</div>
+        <div class="list-body">
+          <div class="list-name">예금/적금/현금</div>
+          <div class="list-sub" id="hw-bank-sub">—</div>
+        </div>
+        <div class="list-right">
+          <div class="list-amount" id="hw-bank">—</div>
+        </div>
+      </div>
+      <div class="list-item" onclick="goPage('assets')">
+        <div class="list-icon" style="background:#F0EEFF">🏠</div>
+        <div class="list-body">
+          <div class="list-name">실물자산</div>
+          <div class="list-sub" id="hw-real-sub">—</div>
+        </div>
+        <div class="list-right">
+          <div class="list-amount" id="hw-real">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 부채 요약 -->
+  <div class="section">
+    <div class="section-title">부채 현황</div>
+    <div class="card">
+      <div class="list-item" onclick="goPage('debt')">
+        <div class="list-icon" style="background:#FFF0F1">🏦</div>
+        <div class="list-body">
+          <div class="list-name">총 대출 잔액</div>
+          <div class="list-sub" id="hw-debt-sub">—</div>
+        </div>
+        <div class="list-right">
+          <div class="list-amount neg" id="hw-debt2">—</div>
+          <div class="list-rate" id="hw-debt-rate" style="color:var(--sub)">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 이번달 현금흐름 -->
+  <div class="section">
+    <div class="section-title">이번달 현금흐름</div>
+    <div class="card">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-label">수입</div>
+          <div class="summary-value pos" id="hw-cf-in">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">지출</div>
+          <div class="summary-value neg" id="hw-cf-out">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">저축액</div>
+          <div class="summary-value" id="hw-cf-save">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">저축률</div>
+          <div class="summary-value" id="hw-cf-rate">—</div>
+        </div>
+      </div>
+      <div style="padding:0 20px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-bottom:5px">
+          <span>저축률</span><span id="hw-cf-rate2">—</span>
+        </div>
+        <div class="progress"><div class="progress-bar" id="hw-cf-prog" style="background:var(--primary);width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /home-grid col1 -->
+
+  <div>
+  <!-- 순자산 추이 차트 -->
+  <div style="margin-bottom:12px;padding-top:16px">
+    <div class="section-title">순자산 추이</div>
+    <div class="chart-card">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="seg-tab active" id="btn-net" onclick="setNetMode('net')" style="flex:1;padding:7px;font-size:12px">순자산</button>
+        <button class="seg-tab" id="btn-asset" onclick="setNetMode('asset')" style="flex:1;padding:7px;font-size:12px">총자산</button>
+        <button class="seg-tab" id="btn-inv-r" onclick="setNetMode('inv-r')" style="flex:1;padding:7px;font-size:12px">투자수익률</button>
+      </div>
+      <div id="homeChart"></div>
+    </div>
+  </div>
+  </div><!-- /home-grid col2 -->
+  </div><!-- /home-grid -->
+
+</div><!-- /page-inner -->
+</div><!-- /page-home -->
+
+<!-- ═══════════════════════════════════
+     💰 자산 — 투자 + 계좌 + 실물
+     ═══════════════════════════════════ -->
+<div id="page-assets" class="page">
+<div class="page-inner">
+
+  <!-- 세그먼트 탭 -->
+  <div class="section" style="padding-top:16px;padding-bottom:0">
+    <div class="seg-tabs">
+      <div class="seg-tab active" onclick="setAssetTab('invest')">투자자산</div>
+      <div class="seg-tab" onclick="setAssetTab('bank')">예금/현금</div>
+      <div class="seg-tab" onclick="setAssetTab('real')">실물자산</div>
+    </div>
+  </div>
+
+  <!-- 투자자산 -->
+  <div id="at-invest">
+    <!-- 투자 서브탭 -->
+    <div style="padding:12px 20px 0">
+      <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;scrollbar-width:none">
+        <button class="inv-sub-btn active" onclick="setInvSub('summary')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--primary);color:#fff">📊 요약</button>
+        <button class="inv-sub-btn" onclick="setInvSub('monthly')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">📅 월별추이</button>
+        <button class="inv-sub-btn" onclick="setInvSub('heatmap')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">🌡️ 히트맵</button>
+        <button class="inv-sub-btn" onclick="setInvSub('alert')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">⚠️ 진단</button>
+        <button class="inv-sub-btn" onclick="setInvSub('holdings')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">📷 보유종목</button>
+      </div>
+    </div>
+
+    <!-- 요약 -->
+    <div id="inv-sub-summary">
+      <div class="section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-title">총 투자자산</div>
+            <div class="card-header-value pos" id="at-inv-total">—</div>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item"><div class="summary-label">💰 입금 누적</div><div class="summary-value" id="at-inv-dep">—</div></div>
+            <div class="summary-item"><div class="summary-label">📥 투자원금</div><div class="summary-value" id="at-inv-prin">—</div></div>
+            <div class="summary-item"><div class="summary-label">📈 현재자산</div><div class="summary-value pos" id="at-inv-curr2">—</div></div>
+            <div class="summary-item"><div class="summary-label">🏆 총 손익</div><div class="summary-value pos" id="at-inv-pnl">—</div></div>
+          </div>
+          <div style="padding:0 20px 14px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-bottom:5px">
+              <span>총 수익률</span><span id="at-inv-rate" style="font-weight:700;color:var(--green)">—</span>
+            </div>
+            <div class="progress"><div class="progress-bar" id="at-inv-prog" style="background:var(--green);width:0%"></div></div>
+          </div>
+        </div>
+        <!-- 수익률 바 차트 -->
+        <div class="chart-card">
+          <div class="chart-title">📊 계좌별 수익률</div>
+          <div id="invBarsChart"></div>
+        </div>
+        <!-- 계좌 목록 -->
+        <div class="card" id="investListCard"></div>
+        <!-- 계좌별 상세 카드 -->
+        <div id="invAcctCards"></div>
+      </div>
+    </div>
+
+    <!-- 월별/주별 추이 -->
+    <div id="inv-sub-monthly" style="display:none">
+      <div class="section">
+        <!-- 월별/주별 뷰 토글 -->
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="btnViewMonth" onclick="setInvView('month')"
+            style="flex:1;border:none;padding:8px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">📅 월별</button>
+          <button id="btnViewWeek" onclick="setInvView('week')"
+            style="flex:1;border:none;padding:8px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">🗓 주별</button>
+        </div>
+        <!-- KPI -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="card" style="padding:14px">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:4px">현재자산</div>
+            <div style="font-size:18px;font-weight:800;color:var(--primary)" id="mo-curr">—</div>
+          </div>
+          <div class="card" style="padding:14px">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:4px">총 수익률</div>
+            <div style="font-size:18px;font-weight:800;color:var(--green)" id="mo-rate">—</div>
+          </div>
+        </div>
+        <!-- 추이 차트 토글 -->
+        <div class="chart-card">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button id="btnAsset" onclick="setTrendMode2('asset')" style="flex:1;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">📊 자산</button>
+            <button id="btnRate2" onclick="setTrendMode2('rate')" style="flex:1;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">📈 수익률</button>
+          </div>
+          <div id="invTrendChart"></div>
+        </div>
+        <!-- 합계 테이블 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)" id="inv-table-title">주별 전체 합계</div>
+          <button onclick="exportInvCSV()" style="border:none;background:var(--green);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📥 CSV</button>
+        </div>
+        <!-- 월별 테이블 -->
+        <div id="inv-monthly-table" style="display:none;background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
+          <table style="width:100%;border-collapse:collapse;min-width:560px">
+            <thead><tr style="background:#1A2B4A">
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">년/월</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">입금누적</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">출금누적</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전월대비 자산</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전월대비율</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">월실출금</th>
+            </tr></thead>
+            <tbody id="invMonthlyTbody"></tbody>
+          </table>
+        </div>
+        <!-- 주별 테이블 -->
+        <div id="inv-weekly-table" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
+          <table style="width:100%;border-collapse:collapse;min-width:560px">
+            <thead><tr style="background:#1A2B4A">
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">주차</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">입금누적</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">출금누적</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전주대비 자산</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전주대비율</th>
+              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">주실출금</th>
+            </tr></thead>
+            <tbody id="invWeeklyTbody"></tbody>
+          </table>
+        </div>
+        <!-- 계좌별 상세 (월별) -->
+        <div id="inv-monthly-detail-wrap" style="display:none">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">계좌별 월별 상세</div>
+        <div id="invMonthlyDetail"></div>
+        </div><!-- /inv-monthly-detail-wrap -->
+        <!-- 계좌별 상세 (주별) -->
+        <div id="inv-weekly-detail-wrap">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">계좌별 주별 상세</div>
+        <div id="invWeeklyDetail"></div>
+        </div><!-- /inv-weekly-detail-wrap -->
+      </div>
+    </div>
+
+    <!-- 히트맵 -->
+    <div id="inv-sub-heatmap" style="display:none">
+      <div class="section">
+        <div class="chart-card">
+          <div class="chart-title" style="margin-bottom:14px">🌡️ 계좌별 월별 수익률 히트맵</div>
+          <div id="invHeatmap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"></div>
+          <div style="display:flex;gap:5px;align-items:center;margin-top:10px;font-size:10px;color:var(--sub);flex-wrap:wrap">
+            <div style="width:12px;height:12px;border-radius:2px;background:#B71C1C"></div><span>-30%↓</span>
+            <div style="width:12px;height:12px;border-radius:2px;background:#E53935"></div><span>손실</span>
+            <div style="width:12px;height:12px;border-radius:2px;background:#EF9A9A"></div><span>-10%</span>
+            <div style="width:12px;height:12px;border-radius:2px;background:#E0E0E0"></div><span>±0</span>
+            <div style="width:12px;height:12px;border-radius:2px;background:#A5D6A7"></div><span>+10%</span>
+            <div style="width:12px;height:12px;border-radius:2px;background:#43A047"></div><span>+30%</span>
+            <div style="width:12px;height:12px;border-radius:2px;background:#1B5E20"></div><span>+50%↑</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 진단 -->
+    <div id="inv-sub-alert" style="display:none">
+      <div class="section">
+        <div id="invAlertList"></div>
+        <div class="chart-card">
+          <div class="chart-title">📊 계좌별 수익률 비교</div>
+          <div id="invAlertBars"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 보유종목 -->
+    <div id="inv-sub-holdings" style="display:none">
+      <div class="section">
+        <!-- 업로드 카드 -->
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="padding:14px 16px 10px;font-size:14px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <span>📷 스크린샷으로 종목 가져오기</span>
+          </div>
+          <div style="padding:14px 16px">
+            <div style="font-size:11px;color:var(--sub);margin-bottom:10px;line-height:1.6">토스증권·키움·미래에셋 등 보유종목 화면을 캡처해서 업로드하면 AI가 자동으로 종목을 읽어옵니다.</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <select id="holdings-acct-sel" class="form-input" style="flex:1;font-size:13px">
+                <option value="">계좌 선택</option>
+                <option>토스증권(본인)</option>
+                <option>신한(ISA)</option>
+                <option>토스(일이)</option>
+                <option>신한(일이)ISA</option>
+                <option>토스(수빈)</option>
+                <option>토스(유빈)</option>
+                <option>업비트</option>
+              </select>
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--primary);color:#fff;border-radius:var(--radius);font-size:13px;font-weight:700;cursor:pointer;padding:10px 0">
+                📸 이미지 선택
+                <input type="file" accept="image/*" multiple id="holdings-img-input" style="display:none" onchange="onHoldingsImgSelect(this)">
+              </label>
+            </div>
+            <div id="holdings-preview-wrap" style="display:none">
+              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px" id="holdings-preview-title">추출된 종목</div>
+              <div id="holdings-preview-table"></div>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <button onclick="confirmSaveHoldings()" style="flex:1;border:none;background:var(--primary);color:#fff;border-radius:var(--radius);padding:11px;font-size:13px;font-weight:700;cursor:pointer">✅ 저장</button>
+                <button onclick="document.getElementById('holdings-preview-wrap').style.display='none'" style="border:none;background:var(--gray-100);color:var(--gray-600);border-radius:var(--radius);padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer">취소</button>
+              </div>
+            </div>
+            <div id="holdings-parse-loading" style="display:none;text-align:center;padding:20px;color:var(--sub);font-size:13px">🤖 AI가 종목을 읽는 중...</div>
+          </div>
+        </div>
+        <!-- 보유종목 현황 -->
+        <div id="holdings-display"></div>
+      </div>
+    </div>
+
+  </div><!-- /at-invest -->
+
+  <!-- 예금/현금 -->
+  <div id="at-bank" style="display:none">
+    <div class="section">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-title">총 예금/적금/현금</div>
+          <div class="card-header-value" id="at-bank-total">—</div>
+        </div>
+      </div>
+      <div class="card" id="bankListCard"></div>
+    </div>
+  </div>
+
+  <!-- 실물자산 -->
+  <div id="at-real" style="display:none">
+    <!-- 서브탭 -->
+    <div style="padding:12px 20px 0;display:flex;gap:8px">
+      <button class="real-sub-btn" onclick="setRealSub('list')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">🏠 자산목록</button>
+      <button class="real-sub-btn" onclick="setRealSub('tax')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">🧮 양도세 계산</button>
+    </div>
+
+    <!-- 자산 목록 -->
+    <div id="real-sub-list">
+      <div class="section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-title">총 실물자산 (세전)</div>
+            <div class="card-header-value" id="at-real-total">—</div>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item"><div class="summary-label">총 취득가</div><div class="summary-value" id="at-real-buy">—</div></div>
+            <div class="summary-item"><div class="summary-label">평가차익</div><div class="summary-value pos" id="at-real-gain">—</div></div>
+            <div class="summary-item"><div class="summary-label">예상 양도세</div><div class="summary-value neg" id="at-real-tax">—</div></div>
+            <div class="summary-item"><div class="summary-label">세후 순자산</div><div class="summary-value" id="at-real-net">—</div></div>
+          </div>
+        </div>
+        <div class="card" id="realListCard"></div>
+      </div>
+    </div>
+
+    <!-- 양도세 계산기 -->
+    <div id="real-sub-tax" style="display:none">
+      <div class="section">
+        <div style="background:#FFF9E6;border:1px solid #FFD700;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:11px;color:#856404;line-height:1.6">
+          ⚠️ <strong>참고용 추정치입니다.</strong> 실제 양도세는 취득세·중개수수료 등 필요경비, 일시적 2주택 특례 등에 따라 달라집니다. 정확한 세금은 반드시 <strong>세무사 상담</strong>을 받으세요.
+        </div>
+        <div class="card">
+          <div style="padding:16px 20px 8px;font-size:14px;font-weight:700">🧮 양도세 계산기</div>
+          <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">부동산 선택</label>
+              <select id="tax-asset" onchange="onTaxAssetChange()" class="form-input form-select">
+                <option value="">— 직접 입력 또는 선택 —</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">취득가액 (원)</label>
+                <input type="text" id="tax-buy" class="form-input num" placeholder="0" inputmode="numeric" oninput="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">양도가액 (원)</label>
+                <input type="text" id="tax-sell" class="form-input num" placeholder="0" inputmode="numeric" oninput="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">취득일</label>
+                <input type="month" id="tax-buy-date" class="form-input" onchange="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">양도예정일</label>
+                <input type="month" id="tax-sell-date" class="form-input" value="2026-04" onchange="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">주택 수</label>
+                <select id="tax-houses" class="form-input form-select" onchange="calcTransferTax()">
+                  <option value="1">1주택</option>
+                  <option value="2" selected>2주택</option>
+                  <option value="3">3주택 이상</option>
+                </select></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">조정대상지역</label>
+                <select id="tax-adj" class="form-input form-select" onchange="calcTransferTax()">
+                  <option value="yes">조정대상지역</option>
+                  <option value="no">비조정지역</option>
+                </select></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">실거주 기간 (년)</label>
+                <input type="number" id="tax-live" class="form-input" placeholder="0" min="0" max="30" oninput="calcTransferTax()"></div>
+              <div><label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px">필요경비 (원)</label>
+                <input type="text" id="tax-cost" class="form-input num" placeholder="취득세+중개비 등" inputmode="numeric" oninput="calcTransferTax()"></div>
+            </div>
+          </div>
+        </div>
+        <div id="tax-result" style="display:none">
+          <div class="card"><div style="padding:16px 20px 6px;font-size:14px;font-weight:700">📊 계산 결과</div>
+            <div style="padding:0 20px 16px"><div id="tax-result-content"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-inner -->
+</div><!-- /page-assets -->
+
+<!-- ═══════════════════════════════════
+     🏦 부채 — 대출 관리
+     ═══════════════════════════════════ -->
+<div id="page-debt" class="page">
+<div class="page-inner">
+  <!-- 부채 서브탭 -->
+  <div style="padding:16px 20px 0;display:flex;gap:8px">
+    <button class="debt-sub-btn" onclick="setDebtSub('loan')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">🏦 대출</button>
+    <button class="debt-sub-btn" onclick="setDebtSub('install')" style="border:none;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">💳 할부</button>
+  </div>
+
+  <!-- 대출 섹션 -->
+  <div id="debt-sub-loan">
+  <div class="section" style="padding-top:16px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">총 부채</div>
+        <div class="card-header-value neg" id="dt-total">—</div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-item"><div class="summary-label">월 납입 합계</div><div class="summary-value neg" id="dt-monthly">—</div></div>
+        <div class="summary-item"><div class="summary-label">평균 금리</div><div class="summary-value" id="dt-rate">—</div></div>
+        <div class="summary-item"><div class="summary-label">담보대출</div><div class="summary-value" id="dt-mortgage">—</div></div>
+        <div class="summary-item"><div class="summary-label">기타대출</div><div class="summary-value" id="dt-other">—</div></div>
+      </div>
+    </div>
+    <div class="card" id="debtListCard">
+      <div class="empty"><div class="empty-icon">🏦</div><div class="empty-text">대출 내역이 없습니다</div></div>
+    </div>
+  </div>
+</div>
+
+  </div><!-- /debt-sub-loan -->
+
+  <!-- 할부 섹션 -->
+  <div id="debt-sub-install" style="display:none">
+    <div class="section" style="padding-top:16px">
+      <!-- 할부 요약 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-title">💳 할부 현황</div>
+          <div class="card-header-value neg" id="install-total-monthly">—</div>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item"><div class="summary-label">진행 중</div><div class="summary-value" id="install-active-cnt">—</div></div>
+          <div class="summary-item"><div class="summary-label">총 잔여금액</div><div class="summary-value neg" id="install-remain-total">—</div></div>
+          <div class="summary-item"><div class="summary-label">이번달 납부</div><div class="summary-value neg" id="install-this-month">—</div></div>
+          <div class="summary-item"><div class="summary-label">완료 예정</div><div class="summary-value" id="install-end-date">—</div></div>
+        </div>
+      </div>
+      <!-- 할부 목록 -->
+      <div id="installListCard" class="card"></div>
+      <!-- 이번달 현금흐름 반영 버튼 -->
+      <button onclick="applyInstallToCf()" class="btn btn-green" style="width:100%;margin-top:4px;margin-bottom:16px">
+        💳 이번달 할부 현금흐름에 반영
+      </button>
+    </div>
+
+</div><!-- /page-inner -->
+</div><!-- /page-debt -->
+
+<!-- ═══════════════════════════════════
+     💳 현금흐름
+     ═══════════════════════════════════ -->
+<div id="page-cashflow" class="page">
+<div class="page-inner">
+  <div class="section" style="padding-top:16px;padding-bottom:0">
+    <div class="seg-tabs">
+      <div class="seg-tab active" onclick="setCfTab('month')">이번달</div>
+      <div class="seg-tab" onclick="setCfTab('fixed')">🔒 고정지출</div>
+      <div class="seg-tab" onclick="setCfTab('history')">월별 추이</div>
+    </div>
+  </div>
+
+  <!-- 이번달 -->
+  <div id="cf-month">
+    <div class="section">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-title" id="cf-month-label">2026년 4월</div>
+          <div class="card-header-value pos" id="cf-save-val">—</div>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item"><div class="summary-label">총 수입</div><div class="summary-value pos" id="cf-in-val">—</div></div>
+          <div class="summary-item"><div class="summary-label">총 지출</div><div class="summary-value neg" id="cf-out-val">—</div></div>
+          <div class="summary-item"><div class="summary-label">저축률</div><div class="summary-value" id="cf-rate-val">—</div></div>
+          <div class="summary-item"><div class="summary-label">전월대비</div><div class="summary-value" id="cf-mom-val">—</div></div>
+        </div>
+      </div>
+
+      <!-- 수입 상세 -->
+      <div class="section-title" style="margin-top:4px">수입 내역</div>
+      <div class="card" id="incomeList"></div>
+
+      <!-- 지출 상세 -->
+      <div class="section-title" style="margin-top:12px">지출 내역</div>
+      <div class="card" id="expenseList"></div>
+    </div>
+  </div>
+
+  <!-- 고정지출 -->
+  <div id="cf-fixed" style="display:none">
+    <div class="section">
+      <!-- 고정지출 요약 카드 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-title">월 고정지출 합계</div>
+          <div class="card-header-value neg" id="fixed-total">—</div>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item"><div class="summary-label">항목 수</div><div class="summary-value" id="fixed-cnt">—</div></div>
+          <div class="summary-item"><div class="summary-label">연간 총액</div><div class="summary-value neg" id="fixed-annual">—</div></div>
+          <div class="summary-item"><div class="summary-label">활성 항목</div><div class="summary-value" id="fixed-active">—</div></div>
+          <div class="summary-item"><div class="summary-label">일시정지</div><div class="summary-value" id="fixed-paused">—</div></div>
+        </div>
+      </div>
+
+      <!-- 카테고리별 합계 바 -->
+      <div class="chart-card">
+        <div class="chart-title">📊 카테고리별 고정지출</div>
+        <div id="fixedCatChart"></div>
+      </div>
+
+      <!-- 고정지출 목록 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">고정지출 목록</div>
+        <select id="fixed-filter-cat" onchange="renderFixedList()" style="padding:5px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff">
+          <option value="">전체</option>
+          <option>대출이자/원금</option><option>관리비/공과금</option>
+          <option>보험료</option><option>통신비</option>
+          <option>구독서비스</option><option>자녀교육비</option><option>기타 정기지출</option>
+        </select>
+      </div>
+      <div id="fixedList" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;margin-bottom:16px"></div>
+
+      <!-- 이번달 자동반영 버튼 -->
+      <button onclick="applyFixedToThisMonth()" class="btn btn-green" style="width:100%;margin-bottom:16px">
+        📅 이번달 현금흐름에 자동 반영
+      </button>
+    </div>
+  </div>
+
+  <!-- 월별 추이 -->
+  <div id="cf-history" style="display:none">
+    <div class="section">
+      <div class="chart-card">
+        <div class="chart-title">월별 수입/지출 추이</div>
+        <div id="cfChart"></div>
+      </div>
+      <div class="card" id="cfHistoryList"></div>
+    </div>
+  </div>
+
+</div><!-- /page-inner -->
+</div><!-- /page-cashflow -->
+
+<!-- ═══════════════════════════════════
+     🎯 목표
+     ═══════════════════════════════════ -->
+<div id="page-goals" class="page">
+<div class="page-inner">
+  <div class="section" style="padding-top:16px">
+    <!-- 전체 달성률 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">전체 목표 달성률</div>
+        <div class="card-header-value" id="goal-overall">—</div>
+      </div>
+    </div>
+
+    <!-- 목표 목록 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">🎯 목표 현황</div>
+      <button onclick="toggleGoalForm()" style="border:none;background:var(--primary);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">+ 목표 추가</button>
+    </div>
+
+    <!-- 목표 추가 폼 -->
+    <div id="goal-form" style="display:none;background:var(--card);border-radius:var(--radius-l);padding:16px;box-shadow:var(--shadow-s);margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px">🎯 새 목표 추가</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">목표명</label>
+          <input type="text" id="goal-name" class="form-input" placeholder="예: 비상금 1억 만들기">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">유형</label>
+            <select id="goal-type" class="form-input form-select">
+              <option value="저축목표">저축목표</option>
+              <option value="수익률">수익률</option>
+              <option value="자산목표">자산목표</option>
+              <option value="부채상환">부채상환</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">목표 금액/수치</label>
+            <input type="text" id="goal-target" class="form-input num" placeholder="0" inputmode="numeric">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">현재 금액/수치</label>
+            <input type="text" id="goal-current" class="form-input num" placeholder="0 (자동계산)" inputmode="numeric">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">목표 기한</label>
+            <input type="month" id="goal-date" class="form-input">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--sub);display:block;margin-bottom:4px">메모</label>
+          <input type="text" id="goal-memo" class="form-input" placeholder="메모 (선택)">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="saveGoalEntry()" class="btn btn-primary" style="flex:1">💾 저장</button>
+          <button onclick="toggleGoalForm()" class="btn btn-ghost btn-sm">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="goalsList"></div>
+  </div>
+
+</div><!-- /page-inner -->
+</div><!-- /page-goals -->
+
+<!-- ═══════════════════════════════════
+     ✏️ 입력
+     ═══════════════════════════════════ -->
+<div id="page-input" class="page">
+<div class="page-inner">
+  <div class="section" style="padding-top:16px;padding-bottom:0">
+    <div class="seg-tabs">
+      <div class="seg-tab active" onclick="setInputTab('invest')">투자</div>
+      <div class="seg-tab" onclick="setInputTab('bank')">계좌</div>
+      <div class="seg-tab" onclick="setInputTab('debt')">부채</div>
+      <div class="seg-tab" onclick="setInputTab('install')">💳할부</div>
+      <div class="seg-tab" onclick="setInputTab('real')">실물</div>
+      <div class="seg-tab" onclick="setInputTab('cf')">현금</div>
+      <div class="seg-tab" onclick="setInputTab('fixed')">🔒고정</div>
+    </div>
+  </div>
+
+  <!-- 투자 입력 (기존 로직) -->
+  <div id="inp-invest">
+    <div class="form-card">
+      <div class="form-title">📈 투자자산 입력</div>
+      <!-- 월별/주별 토글 -->
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <button id="inv-mode-month" onclick="setInvMode('month')"
+          style="flex:1;padding:8px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">📅 월별</button>
+        <button id="inv-mode-week" onclick="setInvMode('week')"
+          style="flex:1;padding:8px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">🗓 주별</button>
+      </div>
+      <p id="inv-mode-desc" style="font-size:12px;color:var(--sub);margin-bottom:14px">계좌와 년/월을 선택하면 기존 데이터를 불러옵니다</p>
+      <div class="form-group">
+        <label class="form-label">계좌 선택</label>
+        <select class="form-input form-select" id="inv-acct" onchange="onInvAcctChange()">
+          <option value="">— 계좌 선택 —</option>
+          <option>토스증권(본인)</option><option>신한(ISA)</option>
+          <option>토스(일이)</option><option>신한(일이)ISA</option>
+          <option>토스(수빈)</option><option>토스(유빈)</option>
+          <option>연금저축</option><option>IRP</option>
+          <option>연금저축(일이)</option><option>IRP(일이)</option>
+          <option>업비트</option><option>퇴직연금</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" id="inv-period-label">년/월</label>
+          <input type="month" class="form-input" id="inv-month" value="2026-05" onchange="onInvAcctChange()">
+          <input type="week"  class="form-input" id="inv-week"  style="display:none" onchange="updateWeekLabel();onInvAcctChange()">
+          <div id="inv-week-label" style="display:none;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--blue-50,#EFF6FF);border-radius:6px"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">현재 자산 (원)</label>
+          <input type="text" class="form-input num" id="inv-curr" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+      <div id="inv-loaded-badge" style="display:none;margin-bottom:12px"></div>
+      <div style="border-top:1px solid var(--gray-100);padding-top:14px;margin-top:4px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="inv-dep-label">💸 당기 입금</span>
+          <button onclick="addInvDepRow()" style="border:none;background:var(--primary-l);color:var(--primary);padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ 추가</button>
+        </div>
+        <div id="inv-dep-rows"></div>
+        <div style="display:flex;justify-content:space-between;background:var(--gray-50);border-radius:8px;padding:8px 12px;margin-top:6px">
+          <span style="font-size:12px;color:var(--sub)">합계</span>
+          <span id="inv-dep-total" style="font-size:13px;font-weight:700;color:var(--primary)">0 원</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--gray-100);padding-top:14px;margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="inv-wd-label">📤 당기 출금</span>
+          <button onclick="addInvWdRow()" style="border:none;background:var(--red-l);color:var(--red);padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ 추가</button>
+        </div>
+        <div id="inv-wd-rows"></div>
+        <div style="display:flex;justify-content:space-between;background:var(--gray-50);border-radius:8px;padding:8px 12px;margin-top:6px">
+          <span style="font-size:12px;color:var(--sub)">합계</span>
+          <span id="inv-wd-total" style="font-size:13px;font-weight:700;color:var(--red)">0 원</span>
+        </div>
+      </div>
+      <div style="background:var(--gray-50);border-radius:10px;padding:12px;margin-top:14px" id="inv-calc-box" style="display:none">
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--sub)">입금누적</span><span id="inv-dep-cum" style="font-weight:600">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--sub)">출금누적</span><span id="inv-wd-cum" style="font-weight:600">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--gray-200);margin-top:3px;padding-top:6px"><span style="color:var(--sub)">투자원금</span><span id="inv-prin" style="font-weight:700">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--sub)">손익금</span><span id="inv-pnl" style="font-weight:700">—</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;padding:3px 0"><span style="color:var(--sub)">수익률</span><span id="inv-rate" style="font-weight:800;font-size:16px">—</span></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveInvEntry()">💾 저장</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteInvEntry()">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearInvForm()">↺</button>
+      </div>
+    </div>
+    <!-- 입력 이력 -->
+    <div style="padding:0 20px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">📋 입력 이력</span>
+        <div style="display:flex;gap:6px">
+          <button id="del-corrupted-btn" onclick="deleteCorruptedWeeks()" style="display:none;padding:5px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;background:#FFF0F1;color:var(--red);cursor:pointer">🗑 손상항목 삭제</button>
+          <select id="inv-filter-acct" onchange="renderInvLog()" style="padding:5px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff;color:var(--text)"><option value="">전체</option></select>
+        </div>
+      </div>
+      <div id="inv-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:var(--shadow-s)"></div>
+    </div>
+  </div>
+
+  <!-- 계좌 입력 -->
+  <div id="inp-bank" style="display:none">
+    <div class="form-card">
+      <div class="form-title">🏦 예금/적금/현금 입력</div>
+      <div class="form-group">
+        <label class="form-label">계좌명</label>
+        <input type="text" class="form-input" id="bank-name" placeholder="예: 국민은행 통장">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">금융사</label>
+          <input type="text" class="form-input" id="bank-company" placeholder="KB국민은행">
+        </div>
+        <div class="form-group">
+          <label class="form-label">종류</label>
+          <select class="form-input form-select" id="bank-type">
+            <option value="입출금">입출금</option>
+            <option value="파킹통장">파킹통장</option>
+            <option value="적금">적금</option>
+            <option value="정기예금">정기예금</option>
+            <option value="청약">청약</option>
+            <option value="CMA">CMA</option>
+            <option value="현금">현금</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">현재 잔액 (원)</label>
+          <input type="text" class="form-input num" id="bank-balance" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label">금리 (%)</label>
+          <input type="number" class="form-input" id="bank-rate" placeholder="0.0" step="0.1" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">기준 년/월</label>
+          <input type="month" class="form-input" id="bank-month" value="2026-04">
+        </div>
+        <div class="form-group">
+          <label class="form-label">만기일 (선택)</label>
+          <input type="month" class="form-input" id="bank-maturity">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">메모</label>
+        <input type="text" class="form-input" id="bank-memo" placeholder="메모 (선택)">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveBankEntry()">💾 저장</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearBankForm()">↺ 초기화</button>
+      </div>
+    </div>
+    <div style="padding:0 20px 16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">📋 계좌 목록</div>
+      <div id="bank-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:var(--shadow-s)"></div>
+    </div>
+  </div>
+
+  <!-- 부채 입력 -->
+  <div id="inp-debt" style="display:none">
+    <div class="form-card">
+      <div class="form-title">🏦 대출 입력</div>
+      <div class="form-group">
+        <label class="form-label">대출명</label>
+        <input type="text" class="form-input" id="debt-name" placeholder="예: 남양주 아파트 담보대출">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">금융사</label>
+          <input type="text" class="form-input" id="debt-company" placeholder="농협은행">
+        </div>
+        <div class="form-group">
+          <label class="form-label">종류</label>
+          <select class="form-input form-select" id="debt-type" onchange="calcDebtMonthly()">
+            <option value="주담대">주담대</option>
+            <option value="전세대출">전세대출</option>
+            <option value="신용대출">신용대출</option>
+            <option value="마이너스통장">마이너스통장</option>
+            <option value="자동차할부">자동차할부</option>
+            <option value="카드론">카드론</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">대출 잔액 (원)</label>
+          <input type="text" class="form-input num" id="debt-balance" placeholder="0" inputmode="numeric" oninput="calcDebtMonthly()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">연 금리 (%)</label>
+          <input type="number" class="form-input" id="debt-rate" placeholder="0.0" step="0.01" min="0" oninput="calcDebtMonthly()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">금리 유형</label>
+          <select class="form-input form-select" id="debt-rate-type">
+            <option value="고정">고정금리</option>
+            <option value="변동">변동금리</option>
+            <option value="혼합">혼합금리</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">상환 방식</label>
+          <select class="form-input form-select" id="debt-repay-type" onchange="calcDebtMonthly()">
+            <option value="원리금균등">원리금균등</option>
+            <option value="원금균등">원금균등</option>
+            <option value="만기일시">만기일시상환</option>
+            <option value="이자만">이자만납부</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">대출 실행일</label>
+          <input type="month" class="form-input" id="debt-start" onchange="calcDebtMonthly()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">만기일</label>
+          <input type="month" class="form-input" id="debt-end" onchange="calcDebtMonthly()">
+        </div>
+      </div>
+
+      <!-- 자동 계산 결과 -->
+      <div id="debt-calc-result" style="display:none;background:var(--primary-l);border-radius:12px;padding:14px;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">📊 자동 계산 결과</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">월 납입액</div>
+            <div id="dc-monthly" style="font-size:15px;font-weight:800;color:var(--text)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">이 중 이자</div>
+            <div id="dc-interest" style="font-size:15px;font-weight:800;color:var(--red)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">이 중 원금</div>
+            <div id="dc-principal" style="font-size:15px;font-weight:800;color:var(--green)">—</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:var(--sub);margin-bottom:3px">남은 기간</div>
+            <div id="dc-remain" style="font-size:15px;font-weight:800;color:var(--text)">—</div>
+          </div>
+        </div>
+        <div id="dc-total" style="margin-top:8px;background:#fff;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--sub)">총 이자 부담 (잔여)</span>
+          <span id="dc-total-interest" style="font-size:14px;font-weight:800;color:var(--red)">—</span>
+        </div>
+      </div>
+
+      <!-- 월 납입액 (자동입력 or 직접입력) -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">월 납입액 (원) <span style="font-size:10px;color:var(--primary);font-weight:600">↑자동계산</span></label>
+          <input type="text" class="form-input num" id="debt-monthly" placeholder="자동계산 또는 직접입력" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label">메모</label>
+          <input type="text" class="form-input" id="debt-memo" placeholder="메모 (선택)">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveDebtEntry()">💾 저장</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearDebtForm()">↺ 초기화</button>
+      </div>
+    </div>
+    <div style="padding:0 20px 16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">📋 대출 목록</div>
+      <div id="debt-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:var(--shadow-s)"></div>
+    </div>
+  </div>
+
+  <!-- 실물자산 입력 -->
+  <div id="inp-real" style="display:none">
+    <div class="form-card">
+      <div class="form-title">🏠 실물자산 입력</div>
+      <div class="form-group">
+        <label class="form-label">자산명</label>
+        <input type="text" class="form-input" id="real-name" placeholder="예: 남양주 아파트(본인)">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">종류</label>
+          <select class="form-input form-select" id="real-type">
+            <option value="아파트">아파트</option>
+            <option value="주택">주택</option>
+            <option value="분양권">분양권</option>
+            <option value="토지">토지</option>
+            <option value="상가">상가</option>
+            <option value="자동차">자동차</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">소유자</label>
+          <input type="text" class="form-input" id="real-owner" placeholder="본인/배우자">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">취득가격 (원)</label>
+          <input type="text" class="form-input num" id="real-buy" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label">현재 시세 (원)</label>
+          <input type="text" class="form-input num" id="real-curr" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">취득일</label>
+          <input type="month" class="form-input" id="real-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">기준 년/월</label>
+          <input type="month" class="form-input" id="real-month" value="2026-04">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">메모</label>
+        <input type="text" class="form-input" id="real-memo" placeholder="메모 (선택)">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveRealEntry()">💾 저장</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearRealForm()">↺ 초기화</button>
+      </div>
+    </div>
+    <div style="padding:0 20px 16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">📋 실물자산 목록</div>
+      <div id="real-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:var(--shadow-s)"></div>
+    </div>
+  </div>
+
+  <!-- 현금흐름 입력 -->
+  <div id="inp-cf" style="display:none">
+    <div class="form-card">
+      <div class="form-title">💳 현금흐름 입력</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">년/월</label>
+          <input type="month" class="form-input" id="cf-month" value="2026-04" onchange="onCfMonthChange()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">구분</label>
+          <select class="form-input form-select" id="cf-inout" onchange="renderCfCatOptions()">
+            <option value="수입">수입</option>
+            <option value="지출">지출</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">카테고리</label>
+          <select class="form-input form-select" id="cf-cat"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">금액 (원)</label>
+          <input type="text" class="form-input num" id="cf-amount" placeholder="0" inputmode="numeric">
+        </div>
