@@ -1279,12 +1279,8 @@ body {
           <div id="inv-week-label" style="display:none;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--blue-50,#EFF6FF);border-radius:6px"></div>
         </div>
         <div class="form-group">
-          <label class="form-label" style="display:flex;align-items:center;justify-content:space-between">
-            <span>현재 자산 (원)</span>
-            <button onclick="document.getElementById('inv-curr-img-input').click()" style="border:none;background:var(--primary-l);color:var(--primary);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">📷 이미지입력</button>
-          </label>
+          <label class="form-label">현재 자산 (원)</label>
           <input type="text" class="form-input num" id="inv-curr" placeholder="0" inputmode="numeric">
-          <input type="file" accept="image/*" id="inv-curr-img-input" style="display:none" onchange="onInvCurrImgSelect(this)">
         </div>
       </div>
       <div id="inv-loaded-badge" style="display:none;margin-bottom:12px"></div>
@@ -1333,6 +1329,38 @@ body {
         </div>
       </div>
       <div id="inv-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:var(--shadow-s)"></div>
+    </div>
+
+    <!-- 이미지로 현재자산 일괄 업데이트 -->
+    <div class="form-card" style="margin-top:0">
+      <div class="form-title">📷 이미지로 현재자산 일괄 입력</div>
+      <p style="font-size:12px;color:var(--sub);margin-bottom:14px">증권 앱 스크린샷을 업로드하면 여러 계좌의 현재자산을 한 번에 업데이트합니다</p>
+      <!-- 월별/주별 토글 -->
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button id="bulk-mode-month" onclick="setBulkMode('month')"
+          style="flex:1;padding:7px;border-radius:10px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">📅 월별</button>
+        <button id="bulk-mode-week" onclick="setBulkMode('week')"
+          style="flex:1;padding:7px;border-radius:10px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">🗓 주별</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="bulk-period-label">년/월</label>
+        <input type="month" class="form-input" id="bulk-month" value="2026-05">
+        <input type="week"  class="form-input" id="bulk-week"  style="display:none" onchange="updateBulkWeekLabel()">
+        <div id="bulk-week-label" style="display:none;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--blue-50,#EFF6FF);border-radius:6px"></div>
+      </div>
+      <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--primary);color:#fff;padding:10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;margin-bottom:4px">
+        📷 이미지 선택
+        <input type="file" accept="image/*" multiple id="bulk-img-input" style="display:none" onchange="onBulkImgSelect(this)">
+      </label>
+      <div id="bulk-parse-loading" style="display:none;text-align:center;padding:14px;color:var(--primary);font-size:13px;font-weight:700">🔍 이미지 분석 중...</div>
+      <div id="bulk-preview-wrap" style="display:none;margin-top:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px" id="bulk-preview-title"></div>
+        <div id="bulk-preview-table"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button onclick="confirmBulkSave()" class="btn btn-primary" style="flex:1">✅ 저장</button>
+          <button onclick="document.getElementById('bulk-preview-wrap').style.display='none'" class="btn btn-ghost btn-sm">취소</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -5232,48 +5260,189 @@ function fileToBase64(file){
   });
 }
 
-async function onInvCurrImgSelect(input){
+// ── 이미지 일괄 현재자산 업데이트 ──────────────────────────
+let bulkMode = 'month';
+let pendingBulkData = []; // [{acct, curr}]
+
+function setBulkMode(mode){
+  bulkMode = mode;
+  const bM=document.getElementById('bulk-mode-month');
+  const bW=document.getElementById('bulk-mode-week');
+  const mInp=document.getElementById('bulk-month');
+  const wInp=document.getElementById('bulk-week');
+  const lbl=document.getElementById('bulk-period-label');
+  const wLbl=document.getElementById('bulk-week-label');
+  if(mode==='month'){
+    bM.style.background='var(--primary)'; bM.style.color='#fff';
+    bW.style.background='var(--gray-100)'; bW.style.color='var(--gray-600)';
+    mInp.style.display=''; wInp.style.display='none';
+    if(wLbl) wLbl.style.display='none';
+    if(lbl) lbl.textContent='년/월';
+  } else {
+    bW.style.background='var(--primary)'; bW.style.color='#fff';
+    bM.style.background='var(--gray-100)'; bM.style.color='var(--gray-600)';
+    mInp.style.display='none'; wInp.style.display='';
+    if(!wInp.value){
+      const now=new Date(), jan1=new Date(now.getFullYear(),0,1);
+      const week=Math.ceil(((now-jan1)/86400000+jan1.getDay()+1)/7);
+      wInp.value=`${now.getFullYear()}-W${String(week).padStart(2,'0')}`;
+    }
+    if(lbl) lbl.textContent='주차';
+    updateBulkWeekLabel();
+  }
+}
+
+function updateBulkWeekLabel(){
+  const wInp=document.getElementById('bulk-week');
+  const lbl=document.getElementById('bulk-week-label');
+  if(!lbl||!wInp||!wInp.value) return;
+  lbl.style.display='block';
+  lbl.textContent='📅 '+fmtPeriod(wInp.value.replace('-W','W'));
+}
+
+function getBulkPeriod(){
+  if(bulkMode==='week'){
+    const v=document.getElementById('bulk-week').value;
+    return v ? v.replace('-W','W') : '';
+  }
+  return document.getElementById('bulk-month').value;
+}
+
+async function onBulkImgSelect(input){
   if(!input.files.length) return;
   if(!ANTHROPIC_KEY){ showToast('설정 탭에서 Anthropic API 키를 먼저 입력해주세요','warn'); input.value=''; return; }
-  const btn = document.querySelector('#inv-curr-img-input + button') || null;
-  showToast('🔍 이미지 분석 중...','info');
+  const period = getBulkPeriod();
+  if(!period){ showToast(bulkMode==='week'?'주차를 선택해주세요':'년/월을 선택해주세요','warn'); input.value=''; return; }
+
+  const loading=document.getElementById('bulk-parse-loading');
+  const prevWrap=document.getElementById('bulk-preview-wrap');
+  loading.style.display='block'; prevWrap.style.display='none';
+  pendingBulkData=[];
+
+  // 알려진 계좌 목록 (드롭다운에서 추출)
+  const sel=document.getElementById('inv-acct');
+  const knownAccts = sel ? Array.from(sel.options).filter(o=>o.value).map(o=>o.value) : [];
+
   try{
-    const file = input.files[0];
-    const b64 = await fileToBase64(file);
-    const mediaType = file.type || 'image/jpeg';
-    const prompt = `이 이미지는 증권/금융 앱의 계좌 화면입니다.
-화면에 표시된 총 자산 금액(평가금액, 총자산, 총평가금액, 현재잔액, 계좌잔액, 합계 등)을 하나만 추출해주세요.
-가장 크게 표시된 금액이나 "총" 또는 "합계"가 붙은 금액을 우선 선택하세요.
-숫자만 출력 (쉼표·원·공백 없이, 예: 12345678):`;
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':ANTHROPIC_KEY,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:50,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
-          {type:'text',text:prompt}
-        ]}]
-      })
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error?.message||'API 오류');
-    const text = (data.content?.[0]?.text||'').trim();
-    const numStr = text.replace(/[^0-9]/g,'');
-    if(!numStr) throw new Error('금액을 찾지 못했습니다: '+text.slice(0,60));
-    setComma('inv-curr', Number(numStr));
-    showToast('✅ '+fmtN(Number(numStr))+'원 입력됨','success');
+    for(const file of Array.from(input.files)){
+      const b64 = await fileToBase64(file);
+      const mediaType = file.type||'image/jpeg';
+      const result = await parseBulkAssetImage(b64, mediaType, knownAccts);
+      result.forEach(item=>{
+        const existing = pendingBulkData.find(p=>p.acct===item.acct);
+        if(existing) existing.curr=item.curr; else pendingBulkData.push(item);
+      });
+    }
+    if(!pendingBulkData.length){ showToast('계좌 정보를 찾지 못했습니다','warn'); return; }
+    showBulkPreview(period, pendingBulkData);
   }catch(e){
     showToast('❌ '+e.message,'error');
   }finally{
+    loading.style.display='none';
     input.value='';
   }
+}
+
+async function parseBulkAssetImage(b64, mediaType, knownAccts){
+  const acctList = knownAccts.map(a=>`- ${a} (표시명: ${getAcctDisplay(a)})`).join('\n');
+  const prompt = `이 이미지는 증권/금융 앱의 계좌 현황 화면입니다.
+아래 계좌 목록 중 이미지에서 확인 가능한 계좌의 현재 자산(평가금액·총자산·현재잔액 등)을 추출해주세요.
+
+【계좌 목록】
+${acctList}
+
+규칙:
+- 계좌명은 목록의 정확한 원본 이름으로 출력
+- 금액은 숫자만 (쉼표·원·공백 제거)
+- 이미지에 표시명(별칭)이 보일 경우 원본 이름으로 매핑
+- 확인 불가 계좌는 제외
+JSON 배열만 출력 (설명 없이):
+[{"acct":"계좌원본명","curr":금액숫자}, ...]`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':ANTHROPIC_KEY,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:500,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
+        {type:'text',text:prompt}
+      ]}]
+    })
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error?.message||'API 오류');
+  const text = (data.content?.[0]?.text||'').trim();
+  const match = text.match(/\[[\s\S]*\]/);
+  if(!match) throw new Error('JSON 파싱 실패: '+text.slice(0,80));
+  return JSON.parse(match[0]).filter(it=>it.acct&&it.curr!=null);
+}
+
+function showBulkPreview(period, items){
+  const wrap=document.getElementById('bulk-preview-wrap');
+  const title=document.getElementById('bulk-preview-title');
+  const tbl=document.getElementById('bulk-preview-table');
+  title.textContent=`${fmtPeriod(period)} — ${items.length}개 계좌 추출됨`;
+  tbl.innerHTML=`<div style="border-radius:8px;overflow:hidden;border:1px solid var(--gray-200)">
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:#1A2B4A;color:#fff">
+      <th style="padding:7px 10px;text-align:left">계좌</th>
+      <th style="padding:7px 10px;text-align:right">현재자산</th>
+      <th style="padding:7px 10px;text-align:center">기존</th>
+    </tr></thead>
+    <tbody>${items.map((it,i)=>{
+      const existing=DB.invest.find(r=>r.acct===it.acct&&r.month===period);
+      const existStr=existing?fmtN(existing.curr)+'원':'신규';
+      return `<tr style="${i%2?'':'background:var(--gray-50)'}">
+        <td style="padding:7px 10px;font-weight:700">${getAcctDisplay(it.acct)}</td>
+        <td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--primary)">${fmtN(it.curr)}원</td>
+        <td style="padding:7px 10px;text-align:center;font-size:11px;color:var(--sub)">${existStr}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+  wrap._period=period;
+  wrap.style.display='block';
+}
+
+async function confirmBulkSave(){
+  const wrap=document.getElementById('bulk-preview-wrap');
+  const period=wrap._period;
+  if(!period||!pendingBulkData.length) return;
+  const isWeek=isWeekPeriod(period);
+  const sameType=isWeek?isWeekPeriod:isMonthPeriod;
+  let saved=0;
+  for(const item of pendingBulkData){
+    const {acct, curr}=item;
+    const existing=DB.invest.find(r=>r.acct===acct&&r.month===period);
+    let rec;
+    if(existing){
+      rec={...existing, curr};
+    } else {
+      const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period)
+        .sort((a,b)=>a.month.localeCompare(b.month));
+      let prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
+      if(!prevLast&&isWeek){
+        const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+        prevLast=mRows.length?mRows[mRows.length-1]:null;
+      }
+      rec={acct, month:period, dep:0, wd:0,
+        depCum:prevLast?prevLast.depCum||0:0,
+        wdCum:prevLast?prevLast.wdCum||0:0,
+        curr, depItems:[], wdItems:[]};
+    }
+    await gasUpsert('invest', rec);
+    saved++;
+  }
+  wrap.style.display='none';
+  pendingBulkData=[];
+  renderAll();
+  showToast(`✅ ${saved}개 계좌 저장 완료 (${fmtPeriod(period)})`, 'success');
 }
 
 async function parseHoldingsImage(b64, mediaType){
