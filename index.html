@@ -5324,13 +5324,22 @@ async function onBulkImgSelect(input){
   const knownAccts = sel ? Array.from(sel.options).filter(o=>o.value).map(o=>o.value) : [];
 
   try{
+    // 표시명 → 원본명 역매핑 (AI가 표시명으로 반환해도 원본명으로 정규화)
+    const displayToOrig = {};
+    knownAccts.forEach(orig=>{
+      displayToOrig[orig] = orig;
+      const display = getAcctDisplay(orig);
+      if(display !== orig) displayToOrig[display] = orig;
+    });
+
     for(const file of Array.from(input.files)){
       const b64 = await fileToBase64(file);
       const mediaType = file.type||'image/jpeg';
       const result = await parseBulkAssetImage(b64, mediaType, knownAccts);
       result.forEach(item=>{
-        const existing = pendingBulkData.find(p=>p.acct===item.acct);
-        if(existing) existing.curr=item.curr; else pendingBulkData.push(item);
+        const acct = displayToOrig[item.acct] || item.acct; // 표시명이면 원본명으로
+        const existing = pendingBulkData.find(p=>p.acct===acct);
+        if(existing) existing.curr=item.curr; else pendingBulkData.push({acct, curr:item.curr});
       });
     }
     if(!pendingBulkData.length){ showToast('계좌 정보를 찾지 못했습니다','warn'); return; }
