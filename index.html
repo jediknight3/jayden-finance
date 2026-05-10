@@ -2738,7 +2738,7 @@ function getInvLatest(acct){
   const prin=(last.depCum||0)-(last.wdCum||0);
   const pnl=(last.curr||0)-prin;
   const rate=prin?pnl/prin:0;
-  return {acct,prin,curr:last.curr||0,pnl,rate,month:last.month};
+  return {acct,prin,curr:last.curr||0,pnl,rate,month:last.month,depCum:last.depCum||0,wdCum:last.wdCum||0};
 }
 function getAllInvLatest(){
   const accts=[...new Set(DB.invest.map(r=>r.acct))];
@@ -6180,47 +6180,68 @@ function renderInvSummary(){
   // 수익률 바 차트
   renderInvBars('invBarsChart', all);
 
-  // 계좌 목록 테이블
+  // 계좌 목록 테이블 (2줄 레이아웃)
+  const totalWdCum = all.reduce((s,a)=>s+a.wdCum,0);
   const tb = document.getElementById('investListCard');
   if(tb){
     tb.style.overflowX='auto';
     tb.style.webkitOverflowScrolling='touch';
+    const gc={'g-best':'#FFFDE7','g-good':'#E8F5E9','g-warn':'#FFF3E0','g-bad':'#FFEBEE','g-wat':'#ECEFF1'};
+    const fc={'g-best':'#E65100','g-good':'#2E7D32','g-warn':'#E65100','g-bad':'#C62828','g-wat':'#546E7A'};
     tb.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:420px">
-      <thead><tr style="background:#1A2B4A">
-        <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px">계좌명</th>
-        <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">투자원금</th>
-        <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">현재자산</th>
-        <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">손익금</th>
-        <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익률</th>
-        <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center">평가</th>
-      </tr></thead>
+      <thead>
+        <tr style="background:#1A2B4A">
+          <th rowspan="2" style="padding:7px 8px 7px 12px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;border-right:1px solid rgba(255,255,255,.15);vertical-align:middle;white-space:nowrap">계좌</th>
+          <th style="padding:6px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">현재자산</th>
+          <th style="padding:6px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">손익금</th>
+          <th style="padding:6px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">수익률</th>
+          <th style="padding:6px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:center;white-space:nowrap">평가</th>
+        </tr>
+        <tr style="background:#1A2B4A">
+          <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">투자원금</th>
+          <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">입금누적</th>
+          <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">출금누적</th>
+          <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:center;white-space:nowrap">기준월</th>
+        </tr>
+      </thead>
       <tbody>
       ${all.map((a,i)=>{
         const g=GRADE_MAP[a.acct]||{grade:'g-wat',lbl:'—'};
-        const gc={'g-best':'#FFFDE7','g-good':'#E8F5E9','g-warn':'#FFF3E0','g-bad':'#FFEBEE','g-wat':'#ECEFF1'};
-        const fc={'g-best':'#E65100','g-good':'#2E7D32','g-warn':'#E65100','g-bad':'#C62828','g-wat':'#546E7A'};
-        return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-          <td style="padding:10px 10px;font-size:11px;font-weight:600;padding-left:14px">${getAcctDisplay(a.acct)}</td>
-          <td style="padding:10px 10px;font-size:11px;text-align:right">${fmtN(a.prin)}</td>
-          <td style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(a.curr)}</td>
-          <td style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700;color:${a.pnl>=0?'var(--green)':'var(--red)'}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</td>
-          <td style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700;color:${a.rate>=0?'var(--green)':'var(--red)'}">${fmtP(a.rate)}</td>
-          <td style="padding:10px 10px;text-align:center"><span style="display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:${gc[g.grade]};color:${fc[g.grade]}">${g.lbl}</span></td>
+        const bg=i%2?'':'background:var(--gray-50)';
+        return `<tr style="${bg}">
+          <td rowspan="2" style="padding:7px 8px 7px 12px;vertical-align:middle;border-right:1px solid var(--gray-100)">
+            <div style="font-size:11px;font-weight:700;white-space:nowrap">${getAcctDisplay(a.acct)}</div>
+          </td>
+          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700">${fmtN(a.curr)}</td>
+          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${a.pnl>=0?'var(--green)':'var(--red)'}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</td>
+          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${a.rate>=0?'var(--green)':'var(--red)'}">${fmtP(a.rate)}</td>
+          <td style="padding:6px 8px 2px;text-align:center"><span style="display:inline-block;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:700;background:${gc[g.grade]};color:${fc[g.grade]}">${g.lbl}</span></td>
+        </tr>
+        <tr style="${bg}">
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.prin)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.depCum)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.wdCum)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:center;color:var(--sub)">${fmtMo(a.month)}</td>
         </tr>`;
       }).join('')}
       <tr style="background:#1A2B4A;border-top:2px solid var(--yellow)">
-        <td style="padding:10px 14px;font-size:12px;font-weight:700;color:#fff">합  계</td>
-        <td style="padding:10px 10px;text-align:right;font-size:12px;font-weight:700;color:#fff">${fmtN(t.prin)}</td>
-        <td style="padding:10px 10px;text-align:right;font-size:12px;font-weight:700;color:var(--yellow)">${fmtN(t.curr)}</td>
-        <td style="padding:10px 10px;text-align:right;font-size:12px;font-weight:700;color:var(--yellow)">${t.pnl>=0?'+':''}${fmtN(t.pnl)}</td>
-        <td style="padding:10px 10px;text-align:right;font-size:12px;font-weight:700;color:var(--yellow)">${fmtP(t.rate)}</td>
-        <td style="padding:10px 10px;text-align:center;font-size:12px;font-weight:700;color:var(--yellow)">🏆</td>
+        <td rowspan="2" style="padding:8px 8px 8px 12px;font-size:12px;font-weight:700;color:#fff;vertical-align:middle;border-right:1px solid rgba(255,255,255,.2)">합  계</td>
+        <td style="padding:6px 8px 2px;text-align:right;font-size:12px;font-weight:700;color:var(--yellow)">${fmtN(t.curr)}</td>
+        <td style="padding:6px 8px 2px;text-align:right;font-size:12px;font-weight:700;color:var(--yellow)">${t.pnl>=0?'+':''}${fmtN(t.pnl)}</td>
+        <td style="padding:6px 8px 2px;text-align:right;font-size:12px;font-weight:700;color:var(--yellow)">${fmtP(t.rate)}</td>
+        <td style="padding:6px 8px 2px;text-align:center;font-size:13px">🏆</td>
+      </tr>
+      <tr style="background:#1A2B4A">
+        <td style="padding:2px 8px 6px;text-align:right;font-size:10px;font-weight:600;color:rgba(255,255,255,.7)">${fmtN(t.prin)}</td>
+        <td style="padding:2px 8px 6px;text-align:right;font-size:10px;font-weight:600;color:rgba(255,255,255,.7)">${fmtN(totalDepCum)}</td>
+        <td style="padding:2px 8px 6px;text-align:right;font-size:10px;font-weight:600;color:rgba(255,255,255,.7)">${fmtN(totalWdCum)}</td>
+        <td></td>
       </tr>
       </tbody>
     </table>`;
   }
 
-  // 계좌 카드 그리드
+  // 계좌 카드 그리드 (더 많은 정보)
   const cardEl = document.getElementById('invAcctCards');
   if(cardEl){
     cardEl.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
@@ -6228,12 +6249,35 @@ function renderInvSummary(){
       const col=a.rate>=0?'var(--green)':'var(--red)';
       const bg=a.rate>0.3?'#F0FBF8':a.rate<0?'#FFF8F8':'var(--card)';
       const pW=Math.min(Math.abs(a.rate)*100,100);
-      return `<div style="background:${bg};border-radius:var(--radius-m);padding:13px;box-shadow:var(--shadow-s)">
-        <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">${getAcctDisplay(a.acct)}</div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--sub)">현재자산</span><span style="font-weight:700;color:${col}">${fmtN(a.curr)}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--sub)">손익금</span><span style="font-weight:700;color:${col}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:6px"><span style="color:var(--sub)">수익률</span><span style="font-size:14px;font-weight:800;color:${col}">${fmtP(a.rate)}</span></div>
-        <div style="background:var(--gray-200);border-radius:3px;height:4px;overflow:hidden"><div style="height:100%;border-radius:3px;background:${col};width:${pW}%"></div></div>
+      const g=GRADE_MAP[a.acct]||{grade:'g-wat',lbl:'—'};
+      const gc={'g-best':'#FFFDE7','g-good':'#E8F5E9','g-warn':'#FFF3E0','g-bad':'#FFEBEE','g-wat':'#ECEFF1'};
+      const fc={'g-best':'#E65100','g-good':'#2E7D32','g-warn':'#E65100','g-bad':'#C62828','g-wat':'#546E7A'};
+      return `<div style="background:${bg};border-radius:var(--radius-m);padding:12px;box-shadow:var(--shadow-s)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.3">${getAcctDisplay(a.acct)}</div>
+          <span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:${gc[g.grade]};color:${fc[g.grade]};flex-shrink:0;margin-left:4px">${g.lbl}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span style="font-size:10px;color:var(--sub)">현재자산</span>
+          <span style="font-size:13px;font-weight:800;color:${col}">${fmtN(a.curr)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--sub)">수익률</span>
+          <span style="font-size:14px;font-weight:800;color:${col}">${fmtP(a.rate)}</span>
+        </div>
+        <div style="background:var(--gray-200);border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px"><div style="height:100%;border-radius:3px;background:${col};width:${pW}%"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;border-top:1px solid var(--gray-100);padding-top:7px">
+          <div style="font-size:9px;color:var(--sub)">투자원금</div>
+          <div style="font-size:9px;text-align:right;font-weight:600">${fmtN(a.prin)}</div>
+          <div style="font-size:9px;color:var(--sub)">손익금</div>
+          <div style="font-size:9px;text-align:right;font-weight:600;color:${col}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</div>
+          <div style="font-size:9px;color:var(--sub)">입금누적</div>
+          <div style="font-size:9px;text-align:right;color:var(--sub)">${fmtN(a.depCum)}</div>
+          <div style="font-size:9px;color:var(--sub)">출금누적</div>
+          <div style="font-size:9px;text-align:right;color:var(--sub)">${fmtN(a.wdCum)}</div>
+          <div style="font-size:9px;color:var(--sub)">기준월</div>
+          <div style="font-size:9px;text-align:right;color:var(--sub)">${fmtMo(a.month)}</div>
+        </div>
       </div>`;
     }).join('')}
     </div>`;
