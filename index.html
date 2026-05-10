@@ -6035,20 +6035,15 @@ window.addEventListener('resize', applyLayout);
 // ══════════════════════════════════════════════════════
 const HIDDEN_MO_INV = new Set(['2025-01','2025-08']);
 
-const GRADE_MAP = {
-  "토스증권(본인)": {grade:"g-good", lbl:"✅ 우수"},
-  "신한(ISA)":      {grade:"g-best", lbl:"🏆 최우수"},
-  "토스(일이)":     {grade:"g-good", lbl:"✅ 우수"},
-  "신한(일이)ISA":  {grade:"g-warn", lbl:"⚠️ 손실"},
-  "토스(수빈)":     {grade:"g-bad",  lbl:"🔴 위험"},
-  "토스(유빈)":     {grade:"g-bad",  lbl:"🔴 위험"},
-  "연금저축":       {grade:"g-wat",  lbl:"➖ 관찰"},
-  "IRP":            {grade:"g-wat",  lbl:"➖ 관찰"},
-  "연금저축(일이)": {grade:"g-good", lbl:"✅ 양호"},
-  "IRP(일이)":      {grade:"g-wat",  lbl:"➖ 관찰"},
-  "업비트":         {grade:"g-bad",  lbl:"🔴 위험"},
-  "퇴직연금":       {grade:"g-good", lbl:"✅ 양호"},
-};
+function getGrade(rate){
+  if(rate==null||isNaN(rate)) return {grade:'g-wat',lbl:'➖ 관찰'};
+  if(rate>=1.0)   return {grade:'g-best',lbl:'🏆 최우수'};
+  if(rate>=0.3)   return {grade:'g-good',lbl:'✅ 우수'};
+  if(rate>=0.05)  return {grade:'g-good',lbl:'✅ 양호'};
+  if(rate>=-0.05) return {grade:'g-wat', lbl:'➖ 관찰'};
+  if(rate>=-0.15) return {grade:'g-warn',lbl:'⚠️ 주의'};
+  return {grade:'g-bad',lbl:'🔴 위험'};
+}
 
 // 월별 전체 합계 (정확한 계산)
 function getMonthlyTotals2(){
@@ -6206,7 +6201,7 @@ function renderInvSummary(){
       </thead>
       <tbody>
       ${all.map((a,i)=>{
-        const g=GRADE_MAP[a.acct]||{grade:'g-wat',lbl:'—'};
+        const g=getGrade(a.rate);
         const bg=i%2?'':'background:var(--gray-50)';
         return `<tr style="${bg}">
           <td rowspan="2" style="padding:7px 8px 7px 12px;vertical-align:middle;border-right:1px solid var(--gray-100)">
@@ -6293,7 +6288,7 @@ function renderInvBars(elId, all){
     const pct = Math.abs(a.rate)/maxR*100;
     const col = a.rate>=0?'#05C072':'#F04452';
     return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <div style="font-size:10px;color:var(--text);min-width:88px;text-align:right;flex-shrink:0">${getAcctDisplay(a.acct).replace('(본인)','').replace('(일이)','2')}</div>
+      <div style="font-size:10px;color:var(--text);min-width:88px;text-align:right;flex-shrink:0">${getAcctDisplay(a.acct)}</div>
       <div style="flex:1;background:var(--gray-200);border-radius:4px;height:18px;overflow:hidden">
         <div style="height:100%;border-radius:4px;background:${col};width:${Math.max(pct,2)}%"></div>
       </div>
@@ -6568,7 +6563,7 @@ function renderInvHeatmap(){
     const cumTxt = cumRate!=null?(cumRate>=0?'+':'')+(cumRate*100).toFixed(0)+'%':'—';
     const cumColor = cumRate==null?'#aaa':cumRate>=0?'#05C072':'#F04452';
 
-    const acctShort = getAcctDisplay(acct).replace('(본인)','').replace('(일이)','2').replace('신한(일이)ISA','신한2ISA');
+    const acctShort = getAcctDisplay(acct);
 
     h += `<div style="display:flex;margin-bottom:3px;align-items:center">
       <div style="width:90px;flex-shrink:0;font-size:9px;font-weight:700;color:#333;text-align:right;padding-right:8px;line-height:1.2">${acctShort}</div>
@@ -6641,9 +6636,9 @@ function renderInvAlert(){
     <div><div style="font-size:12px;font-weight:700;color:${type==='danger'?'var(--red)':type==='caution'?'var(--orange)':'var(--green)'};margin-bottom:3px">${title}</div>
     <div style="font-size:11px;color:var(--sub);line-height:1.5">${body}</div></div>
   </div>`;
-  danger.forEach(a=>{ h+=alertCard('danger','🔴',`${a.acct} — 손실 ${fmtP(a.rate)}`,`투자원금 ${fmtM(a.prin)} 대비 현재 ${fmtM(a.curr)}. 전략 재검토 필요.`); });
-  caution.forEach(a=>{ h+=alertCard('caution','⚠️',`${a.acct} — 소폭 손실 ${fmtP(a.rate)}`,`투자원금 ${fmtM(a.prin)} 대비 현재 ${fmtM(a.curr)}. 추이 모니터링.`); });
-  good.forEach(a=>{ h+=alertCard('success','✅',`${a.acct} — 우수 ${fmtP(a.rate)}`,`투자원금 ${fmtM(a.prin)} 대비 현재 ${fmtM(a.curr)}. 높은 수익 유지 중.`); });
+  danger.forEach(a=>{ h+=alertCard('danger','🔴',`${getAcctDisplay(a.acct)} — 손실 ${fmtP(a.rate)}`,`투자원금 ${fmtM(a.prin)} 대비 현재 ${fmtM(a.curr)}. 전략 재검토 필요.`); });
+  caution.forEach(a=>{ h+=alertCard('caution','⚠️',`${getAcctDisplay(a.acct)} — 소폭 손실 ${fmtP(a.rate)}`,`투자원금 ${fmtM(a.prin)} 대비 현재 ${fmtM(a.curr)}. 추이 모니터링.`); });
+  good.forEach(a=>{ h+=alertCard('success','✅',`${getAcctDisplay(a.acct)} — 우수 ${fmtP(a.rate)}`,`투자원금 ${fmtM(a.prin)} 대비 현재 ${fmtM(a.curr)}. 높은 수익 유지 중.`); });
   if(!h) h=alertCard('success','✅','전 계좌 양호','특별한 위험 신호가 없습니다.');
   el.innerHTML=h;
   renderInvBars('invAlertBars', all);
