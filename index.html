@@ -2836,22 +2836,21 @@ function renderHome(){
 function renderHomeChart(){
   const el=document.getElementById('homeChart');
   if(!el)return;
-  // 월별 순자산 추이 (투자자산만으로 approximation)
-  const months=[...new Set(DB.invest.map(r=>r.month))].sort().filter(m=>!HIDDEN_MO.has(m));
+  const nw=getNetWorth();
+  const bank=nw.bank, real=nw.real, debt=nw.debt;
+
+  const months=[...new Set(DB.invest.map(r=>r.month))].sort().filter(m=>!HIDDEN_MO.has(m)&&isMonthPeriod(m));
   if(months.length<2){el.innerHTML='<p style="text-align:center;color:var(--gray-400);font-size:12px;padding:20px">데이터가 부족합니다</p>';return;}
 
-  const vals = months.map(mo=>{
-    const accts=[...new Set(DB.invest.map(r=>r.acct))];
-    let totalCurr=0, totalPrin=0, totalDepCum=0, totalWdCum=0;
+  const accts=[...new Set(DB.invest.map(r=>r.acct))];
+  const vals=months.map(mo=>{
+    let totalCurr=0, totalPrin=0;
     accts.forEach(acct=>{
-      const rows=DB.invest.filter(r=>r.acct===acct&&r.month<=mo&&r.curr!=null).sort((a,b)=>a.month.localeCompare(b.month));
+      const rows=DB.invest.filter(r=>r.acct===acct&&r.month<=mo&&r.curr!=null&&isMonthPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
       if(rows.length){
         const last=rows[rows.length-1];
         totalCurr+=last.curr||0;
-        const p=(last.depCum||0)-(last.wdCum||0);
-        totalPrin+=p;
-        totalDepCum+=last.depCum||0;
-        totalWdCum+=last.wdCum||0;
+        totalPrin+=(last.depCum||0)-(last.wdCum||0);
       }
     });
     const pnl=totalCurr-totalPrin;
@@ -2860,15 +2859,13 @@ function renderHomeChart(){
   });
 
   const isRate=homeChartMode==='inv-r';
-  // 순자산=총투자자산, 총자산=순자산(자산-부채 개념으로 차후 확장), 수익률=%
   const data=vals.map(v=>{
     if(isRate) return v.rate*100;
-    if(homeChartMode==='net') return v.curr;  // 총 투자자산
-    return v.curr;  // asset도 동일(향후 부채차감 가능)
+    if(homeChartMode==='net') return v.curr+bank+real-debt;
+    return v.curr+bank+real;
   });
   const lastVal=data[data.length-1];
-  const color=isRate?(lastVal>=0?'#05C072':'#F04452'):'#3182F6';
-  // 수익률: zeroLine=0 표시, 자산: 0 기준 없이 데이터 범위로
+  const color=isRate?(lastVal>=0?'#05C072':'#F04452'):homeChartMode==='net'?'#05C072':'#3182F6';
   drawLineChart(el,months,data,color,isRate?'%':'억',isRate?0:null);
 }
 
