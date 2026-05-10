@@ -2608,7 +2608,7 @@ async function syncAll(){
   if(!GAS_URL){ showToast('설정에서 URL을 먼저 입력해주세요','warn'); return; }
   setLoading(true,'동기화 중...');
   try{
-    const sheets = ['invest','bank','debt','real','cf','goals','fixed'];
+    const sheets = ['invest','bank','debt','real','cf','goals','fixed','install'];
     for(const s of sheets){
       const r = await gasReq({sheet:s});
       if(r.ok) DB[s]=r.data;
@@ -2640,6 +2640,10 @@ async function gasDelete(sheet, key){
   catch(e){ showToast('시트 삭제 실패','error'); }
   finally{ hideSaving(); }
 }
+
+let _debtEditId = null;
+let _installEditId = null;
+let _fixedEditId = null;
 
 function findLocalIdx(sheet, rec){
   return DB[sheet].findIndex(r=>makeKey(sheet,r)===makeKey(sheet,rec));
@@ -3294,6 +3298,11 @@ async function saveInstallEntry(){
   const endDate=s2.getFullYear()+'-'+String(s2.getMonth()+1).padStart(2,'0');
   const repayEl2=document.getElementById('inst-repay');
   const dayEl=document.getElementById('inst-day');
+  if(_installEditId){
+    await gasDelete('install',_installEditId);
+    DB.install=(DB.install||[]).filter(i=>i.id!==_installEditId);
+    _installEditId=null;
+  }
   const id='inst_'+Date.now();
   const rec={id,name,cat:document.getElementById('inst-cat').value,
     company:document.getElementById('inst-company').value,
@@ -3318,9 +3327,12 @@ async function saveInstallEntry(){
 }
 
 function clearInstallForm(){
+  _installEditId=null;
   ['inst-name','inst-company','inst-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['inst-total','inst-months','inst-rate','inst-start'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const ir=document.getElementById('inst-repay');if(ir)ir.value='원리금균등';
+  const ic=document.getElementById('inst-cat');if(ic)ic.value='카드할부';
+  const id2=document.getElementById('inst-day');if(id2)id2.value='0';
   const c=document.getElementById('inst-calc');if(c)c.style.display='none';
 }
 
@@ -3383,7 +3395,10 @@ function renderInstallLog(){
         <div style="font-size:13px;font-weight:700;color:var(--red)">-${fmtN(Number(r.monthly)||0)}/월</div>
         <span style="font-size:10px;background:var(--primary-l);color:var(--primary);padding:1px 6px;border-radius:5px">${r.status||'진행중'}</span>
       </div>
-      <button onclick="deleteInstallEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:5px 8px;border-radius:7px;font-size:11px;cursor:pointer">🗑</button>
+      <div style="display:flex;gap:4px">
+        <button onclick="editInstallEntry('${r.id}')" style="border:none;background:var(--primary-l);color:var(--primary);padding:5px 8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">✏️</button>
+        <button onclick="deleteInstallEntry('${r.id}')" style="border:none;background:var(--red-l);color:var(--red);padding:5px 8px;border-radius:7px;font-size:11px;cursor:pointer">🗑</button>
+      </div>
     </div>`).join('')||'<div class="empty"><div class="empty-text">등록된 할부가 없습니다</div></div>';
 }
 
@@ -3410,6 +3425,7 @@ async function applySingleInstallToCf(id){
 
 function editInstallEntry(id){
   const r=(DB.install||[]).find(i=>i.id===id); if(!r)return;
+  _installEditId=id;
   setInputTab('install');
   goPage('input');
   document.getElementById('inst-name').value=r.name||'';
@@ -3424,11 +3440,9 @@ function editInstallEntry(id){
   const dayEl=document.getElementById('inst-day');
   if(dayEl) dayEl.value=r.day||'0';
   document.getElementById('inst-memo').value=r.memo||'';
-  // 기존 항목 제거 (수정 후 재저장)
-  DB.install=(DB.install||[]).filter(i=>i.id!==id);
-  saveCache();
   calcInstallment();
   showToast('📂 할부 데이터 불러옴 — 수정 후 저장','success');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 async function completeInstall(id){
@@ -4045,6 +4059,9 @@ function clearBankForm(){
   ['bank-name','bank-company','bank-memo'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('bank-balance').value='';
   document.getElementById('bank-rate').value='';
+  document.getElementById('bank-maturity').value='';
+  document.getElementById('bank-month').value=nowMo();
+  document.getElementById('bank-type').value='입출금';
 }
 function renderBankLog(){
   const wrap=document.getElementById('bank-log-wrap'); if(!wrap)return;
@@ -4154,8 +4171,9 @@ function calcDebtMonthly(){
 async function saveDebtEntry(){
   const name=document.getElementById('debt-name').value.trim();
   if(!name){showToast('대출명을 입력해주세요','warn');return;}
+  const useId = _debtEditId || name;
   const rec={
-    id:name, name, company:document.getElementById('debt-company').value,
+    id:useId, name, company:document.getElementById('debt-company').value,
     type:document.getElementById('debt-type').value,
     balance:rawNum('debt-balance'),
     rate:Number(document.getElementById('debt-rate').value)||0,
@@ -4166,15 +4184,27 @@ async function saveDebtEntry(){
     end:document.getElementById('debt-end').value,
     memo:document.getElementById('debt-memo').value,
   };
+  if(_debtEditId && _debtEditId!==name){
+    // 대출명 변경된 경우 구 레코드 삭제
+    await gasDelete('debt',_debtEditId);
+    DB.debt=DB.debt.filter(d=>d.id!==_debtEditId);
+    rec.id=name;
+  }
+  _debtEditId=null;
   await gasUpsert('debt',rec);
   renderAll(); showToast('✅ 대출 저장 완료!','success'); clearDebtForm();
 }
 function clearDebtForm(){
+  _debtEditId=null;
   ['debt-name','debt-company','debt-memo'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('debt-balance').value='';
   document.getElementById('debt-rate').value='';
   document.getElementById('debt-monthly').value='';
+  document.getElementById('debt-type').value='주담대';
+  document.getElementById('debt-rate-type').value='고정';
   document.getElementById('debt-repay-type').value='원리금균등';
+  document.getElementById('debt-start').value='';
+  document.getElementById('debt-end').value='';
   const r=document.getElementById('debt-calc-result');
   if(r) r.style.display='none';
 }
@@ -4188,7 +4218,8 @@ function renderDebtLog(){
     <div class="list-item" style="${i%2?'':'background:var(--gray-50)'}">
       <div class="list-body">
         <div class="list-name">${r.name}</div>
-        <div class="list-sub">${r.type} · ${r.rate||0}% · ${r.rateType||''}${r.monthly?' · 월'+fmtN(r.monthly)+'원':''}</div>
+        <div class="list-sub">${r.type}${r.repayType?' · '+r.repayType:''} · ${r.rate||0}% ${r.rateType||''}${r.monthly?' · 월'+fmtN(r.monthly)+'원':''}</div>
+        ${(r.start||r.end)?`<div style="font-size:10px;color:var(--sub);margin-top:1px">${r.start?fmtMo(r.start):''}${r.start&&r.end?' ~ ':''}${r.end?fmtMo(r.end):''}</div>`:''}
       </div>
       <div class="list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="list-amount neg">-${fmtN(r.balance)}</div>
@@ -4201,6 +4232,7 @@ function renderDebtLog(){
 }
 function editDebtEntry(id){
   const r=DB.debt.find(d=>d.id===id); if(!r)return;
+  _debtEditId=id;
   document.getElementById('debt-name').value=r.name||'';
   document.getElementById('debt-company').value=r.company||'';
   document.getElementById('debt-type').value=r.type||'주담대';
@@ -4212,6 +4244,7 @@ function editDebtEntry(id){
   document.getElementById('debt-start').value=r.start||'';
   document.getElementById('debt-end').value=r.end||'';
   document.getElementById('debt-memo').value=r.memo||'';
+  setInputTab('debt'); goPage('input');
   calcDebtMonthly();
   showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
   window.scrollTo({top:0,behavior:'smooth'});
@@ -4237,6 +4270,9 @@ function clearRealForm(){
   ['real-name','real-owner','real-memo'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('real-buy').value='';
   document.getElementById('real-curr').value='';
+  document.getElementById('real-date').value='';
+  document.getElementById('real-month').value=nowMo();
+  document.getElementById('real-type').value='아파트';
 }
 function renderRealLog(){
   const wrap=document.getElementById('real-log-wrap'); if(!wrap)return;
@@ -4637,6 +4673,11 @@ async function saveFixedEntry(){
   const amount = rawNum('fixed-amount');
   if(!amount){ showToast('금액을 입력해주세요','warn'); return; }
 
+  if(_fixedEditId){
+    await gasDelete('fixed',_fixedEditId);
+    DB.fixed=(DB.fixed||[]).filter(r=>r.id!==_fixedEditId);
+    _fixedEditId=null;
+  }
   const id = 'fixed_'+Date.now();
   const rec = {
     id,
@@ -4670,10 +4711,14 @@ async function saveFixedEntry(){
 }
 
 function clearFixedForm(){
+  _fixedEditId=null;
   ['fixed-name','fixed-memo','fixed-start','fixed-end'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('fixed-amount').value='';
+  const catEl=document.getElementById('fixed-cat'); if(catEl) catEl.value='대출이자/원금';
+  const dayEl=document.getElementById('fixed-day'); if(dayEl) dayEl.value='0';
+  const stEl=document.getElementById('fixed-status'); if(stEl) stEl.value='활성';
   const cb=document.getElementById('fixed-auto');
   if(cb){ cb.checked=false; updateFixedAutoToggle(); }
 }
@@ -4681,6 +4726,7 @@ function clearFixedForm(){
 function editFixedEntry(id){
   const rec = (DB.fixed||[]).find(r=>r.id===id);
   if(!rec) return;
+  _fixedEditId=id;
   setInputTab('fixed');
   goPage('input');
   document.getElementById('fixed-name').value    = rec.name||'';
@@ -4693,9 +4739,8 @@ function editFixedEntry(id){
   document.getElementById('fixed-memo').value    = rec.memo||'';
   const cb=document.getElementById('fixed-auto');
   if(cb){ cb.checked=!!rec.autoApply; updateFixedAutoToggle(); }
-  // 기존 항목 삭제 후 재저장 방식
-  DB.fixed=(DB.fixed||[]).filter(r=>r.id!==id);
-  saveCache();
+  showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 async function toggleFixedStatus(id){
