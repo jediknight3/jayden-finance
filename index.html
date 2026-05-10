@@ -2680,6 +2680,28 @@ function bindComma(id,cb){
   });
 }
 
+// ── 날짜 유틸 ───────────────────────────────────────────────
+// 어떤 형식의 날짜든 "YYYY-MM" 으로 변환 (input[type=month] 호환)
+function toMonthInput(v){
+  if(!v) return '';
+  const s=String(v).trim();
+  // ISO 형식: "2028-08-31T15:00:00.000Z" → "2028-08"
+  if(s.includes('T')) return s.slice(0,7);
+  // "YYYY-MM-DD" → "YYYY-MM"
+  if(s.length>7 && s[4]==='-') return s.slice(0,7);
+  // 이미 "YYYY-MM"
+  return s.slice(0,7);
+}
+// 안전한 월 표시 (연도가 비현실적이면 원본 문자 표시)
+function safeMonthDisplay(v){
+  if(!v) return '';
+  const s=toMonthInput(v);
+  if(!s) return '';
+  const yr=parseInt(s.slice(0,4));
+  if(isNaN(yr)||yr<1900||yr>2200) return s+' ⚠';
+  return fmtMo(s);
+}
+
 // ── 네비게이션 ───────────────────────────────────────────
 let curPage='home';
 
@@ -3434,7 +3456,7 @@ function editInstallEntry(id){
   setComma('inst-total',r.totalAmt);
   document.getElementById('inst-months').value=r.months||'';
   document.getElementById('inst-rate').value=r.rate||0;
-  document.getElementById('inst-start').value=r.start||'';
+  document.getElementById('inst-start').value=toMonthInput(r.start);
   const repayEl=document.getElementById('inst-repay');
   if(repayEl) repayEl.value=r.repayType||'원리금균등';
   const dayEl=document.getElementById('inst-day');
@@ -4084,8 +4106,8 @@ function editBankEntry(id){
   document.getElementById('bank-type').value=r.type||'입출금';
   setComma('bank-balance',r.balance);
   document.getElementById('bank-rate').value=r.rate||'';
-  document.getElementById('bank-month').value=r.month||'';
-  document.getElementById('bank-maturity').value=r.maturity||'';
+  document.getElementById('bank-month').value=toMonthInput(r.month);
+  document.getElementById('bank-maturity').value=toMonthInput(r.maturity);
   document.getElementById('bank-memo').value=r.memo||'';
   showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
   window.scrollTo({top:0,behavior:'smooth'});
@@ -4172,6 +4194,10 @@ async function saveDebtEntry(){
   const name=document.getElementById('debt-name').value.trim();
   if(!name){showToast('대출명을 입력해주세요','warn');return;}
   const useId = _debtEditId || name;
+  // 날짜 필드: 폼이 비어 있으면 기존 값 유지 (ISO 형식 저장 방지)
+  const existing=_debtEditId?DB.debt.find(d=>d.id===_debtEditId):null;
+  const formStart=document.getElementById('debt-start').value;
+  const formEnd=document.getElementById('debt-end').value;
   const rec={
     id:useId, name, company:document.getElementById('debt-company').value,
     type:document.getElementById('debt-type').value,
@@ -4180,8 +4206,8 @@ async function saveDebtEntry(){
     rateType:document.getElementById('debt-rate-type').value,
     repayType:document.getElementById('debt-repay-type').value,
     monthly:rawNum('debt-monthly'),
-    start:document.getElementById('debt-start').value,
-    end:document.getElementById('debt-end').value,
+    start:formStart||toMonthInput(existing?.start)||'',
+    end:formEnd||toMonthInput(existing?.end)||'',
     memo:document.getElementById('debt-memo').value,
   };
   if(_debtEditId && _debtEditId!==name){
@@ -4219,7 +4245,7 @@ function renderDebtLog(){
       <div class="list-body">
         <div class="list-name">${r.name}</div>
         <div class="list-sub">${r.type}${r.repayType?' · '+r.repayType:''} · ${r.rate||0}% ${r.rateType||''}${r.monthly?' · 월'+fmtN(r.monthly)+'원':''}</div>
-        ${(r.start||r.end)?`<div style="font-size:10px;color:var(--sub);margin-top:1px">${r.start?fmtMo(r.start):''}${r.start&&r.end?' ~ ':''}${r.end?fmtMo(r.end):''}</div>`:''}
+        ${(r.start||r.end)?`<div style="font-size:10px;color:var(--sub);margin-top:1px">${r.start?safeMonthDisplay(r.start):''}${r.start&&r.end?' ~ ':''}${r.end?safeMonthDisplay(r.end):''}</div>`:''}
       </div>
       <div class="list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="list-amount neg">-${fmtN(r.balance)}</div>
@@ -4241,8 +4267,8 @@ function editDebtEntry(id){
   document.getElementById('debt-rate-type').value=r.rateType||'고정';
   document.getElementById('debt-repay-type').value=r.repayType||'원리금균등';
   setComma('debt-monthly',r.monthly);
-  document.getElementById('debt-start').value=r.start||'';
-  document.getElementById('debt-end').value=r.end||'';
+  document.getElementById('debt-start').value=toMonthInput(r.start);
+  document.getElementById('debt-end').value=toMonthInput(r.end);
   document.getElementById('debt-memo').value=r.memo||'';
   setInputTab('debt'); goPage('input');
   calcDebtMonthly();
@@ -4302,8 +4328,8 @@ function editRealEntry(id){
   document.getElementById('real-owner').value=r.owner||'';
   setComma('real-buy',r.buyPrice);
   setComma('real-curr',r.currPrice);
-  document.getElementById('real-date').value=r.buyDate||'';
-  document.getElementById('real-month').value=r.month||'';
+  document.getElementById('real-date').value=toMonthInput(r.buyDate);
+  document.getElementById('real-month').value=toMonthInput(r.month)||nowMo();
   document.getElementById('real-memo').value=r.memo||'';
   showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
   window.scrollTo({top:0,behavior:'smooth'});
