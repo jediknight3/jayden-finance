@@ -2307,6 +2307,9 @@ function handleAI(prompt) {
   }
 }
 
+// 날짜로 처리할 필드 목록
+const DATE_FIELDS = new Set(['month','start','end','maturity','buyDate','targetDate']);
+
 function readAll(sheetKey) {
   const sh = getSheet(SHEETS[sheetKey] || sheetKey);
   const last = sh.getLastRow();
@@ -2316,7 +2319,8 @@ function readAll(sheetKey) {
   const data = rows.filter(r=>r[0]).map(r=>{
     const obj = {};
     hdrs.forEach((h,i) => {
-      if (h === 'month') obj[h] = norm(r[i]);
+      if (!h) return; // 헤더 없는 컬럼 무시
+      if (DATE_FIELDS.has(h)) obj[h] = norm(r[i]); // 날짜 필드: norm으로 YYYY-MM 변환
       else if (typeof r[i] === 'string' && (r[i].startsWith('{') || r[i].startsWith('['))) {
         try { obj[h] = JSON.parse(r[i]); } catch { obj[h] = r[i]; }
       } else obj[h] = r[i];
@@ -2328,29 +2332,42 @@ function readAll(sheetKey) {
 
 function handleUpsert(sheetKey, rec) {
   const sh = getSheet(SHEETS[sheetKey] || sheetKey);
-  const last = sh.getLastRow();
-  const hdrs = sh.getLastColumn() > 0 ? sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0] : [];
-
-  // 헤더 없으면 생성
   const expectedHdrs = getHeaders(sheetKey);
-  if (hdrs.length === 0 || hdrs[0] === '') {
+
+  // 현재 시트 헤더 읽기 (빈 셀 제외)
+  let hdrs = sh.getLastColumn() > 0
+    ? sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].filter(h=>h!=='')
+    : [];
+
+  if (hdrs.length === 0) {
+    // 헤더 없으면 새로 생성
     sh.getRange(1,1,1,expectedHdrs.length).setValues([expectedHdrs])
       .setBackground('#1A2B4A').setFontColor('#FFFFFF').setFontWeight('bold');
     sh.setFrozenRows(1);
+    hdrs = expectedHdrs;
+  } else {
+    // 누락된 헤더 컬럼 추가 (스키마 마이그레이션)
+    const missing = expectedHdrs.filter(h => !hdrs.includes(h));
+    if (missing.length > 0) {
+      const startCol = hdrs.length + 1;
+      sh.getRange(1, startCol, 1, missing.length).setValues([missing])
+        .setBackground('#1A2B4A').setFontColor('#FFFFFF').setFontWeight('bold');
+      hdrs = [...hdrs, ...missing];
+    }
   }
 
-  const colCount = expectedHdrs.length;
-  const row = expectedHdrs.map(h => {
+  // 실제 헤더 기준으로 행 데이터 생성 (날짜 필드에 norm 적용)
+  const row = hdrs.map(h => {
     const v = rec[h];
-    if (h === 'month') return norm(v);
-    if (typeof v === 'object') return JSON.stringify(v);
+    if (DATE_FIELDS.has(h)) return norm(v);
+    if (v !== null && v !== undefined && typeof v === 'object') return JSON.stringify(v);
     return v !== undefined ? v : '';
   });
 
   // 기존 행 탐색
+  const last = sh.getLastRow();
   let found = -1;
   if (last >= 2) {
-    const keyCol = sheetKey === 'invest' ? 2 : 1; // invest: acct+month, 나머지: name/id
     const keys = sh.getRange(2,1,last-1,2).getValues();
     for (let i=0; i<keys.length; i++) {
       if (sheetKey === 'invest') {
@@ -2362,7 +2379,7 @@ function handleUpsert(sheetKey, rec) {
   }
 
   if (found > 0) {
-    sh.getRange(found,1,1,colCount).setValues([row]);
+    sh.getRange(found,1,1,hdrs.length).setValues([row]);
     return resp({ ok:true, action:'updated', row:found });
   } else {
     sh.appendRow(row);
@@ -2681,25 +2698,31 @@ function bindComma(id,cb){
 }
 
 // ── 날짜 유틸 ───────────────────────────────────────────────
-// 어떤 형식의 날짜든 "YYYY-MM" 으로 변환 (input[type=month] 호환)
+// 어떤 형식의 날짜든 "YYYY-MM" 으로 변환, 비현실적 연도면 '' 반환
 function toMonthInput(v){
   if(!v) return '';
   const s=String(v).trim();
-  // ISO 형식: "2028-08-31T15:00:00.000Z" → "2028-08"
-  if(s.includes('T')) return s.slice(0,7);
-  // "YYYY-MM-DD" → "YYYY-MM"
-  if(s.length>7 && s[4]==='-') return s.slice(0,7);
-  // 이미 "YYYY-MM"
-  return s.slice(0,7);
+  // "YYYY-MM-DDTHH:..." ISO → slice to YYYY-MM
+  const ym = s.includes('T') ? s.slice(0,7)
+           : (s.length>=7 && s[4]==='-') ? s.slice(0,7)
+           : s.slice(0,7);
+  // 형식 검증 (YYYY-MM)
+  if(!/^\d{4}-\d{2}$/.test(ym)) return '';
+  // 연도 범위 검증: 1900~2100 외에는 손상된 데이터로 간주해 빈 값 반환
+  const yr = parseInt(ym.slice(0,4));
+  if(yr < 1900 || yr > 2100) return '';
+  return ym;
 }
-// 안전한 월 표시 (연도가 비현실적이면 원본 문자 표시)
+// 안전한 월 표시 (연도가 비현실적이면 "날짜 오류" 표시)
 function safeMonthDisplay(v){
   if(!v) return '';
-  const s=toMonthInput(v);
-  if(!s) return '';
-  const yr=parseInt(s.slice(0,4));
-  if(isNaN(yr)||yr<1900||yr>2200) return s+' ⚠';
-  return fmtMo(s);
+  const ym = toMonthInput(v);
+  if(!ym){
+    // 손상된 연도: 원본에서 연도만 추출해 경고 표시
+    const raw = String(v).slice(0,7);
+    return `<span style="color:var(--red);font-size:9px">⚠ 날짜오류(${raw})</span>`;
+  }
+  return fmtMo(ym);
 }
 
 // ── 네비게이션 ───────────────────────────────────────────
@@ -3234,7 +3257,6 @@ const NOWMO2 = ()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.get
 
 function getInstallRemain(r){
   if(!r||!r.start||!r.months) return 0;
-  // GAS에서 문자열로 올 수 있으므로 Number 변환
   const months=Number(r.months)||0;
   if(!months) return 0;
   const startStr=String(r.start).slice(0,7);
@@ -3243,6 +3265,18 @@ function getInstallRemain(r){
   const now=new Date();
   const elapsed=Math.max(0,Math.floor((now-start)/(1000*60*60*24*30.44)));
   return Math.max(0, months-elapsed);
+}
+// 잔여 금액 계산 (원금균등은 납부된 원금을 차감)
+function getInstallRemainAmt(r){
+  const remain=getInstallRemain(r);
+  const total=Number(r.totalAmt)||0;
+  const months=Number(r.months)||1;
+  const monthly=Number(r.monthly)||0;
+  if((r.repayType==='원금균등'||r.repayType==='원금균등 (초기 납입 많음)')&&total&&months){
+    const elapsed=months-remain;
+    return Math.max(0, total-Math.round(total/months)*elapsed);
+  }
+  return monthly*remain;
 }
 
 function setDebtSub(t){
@@ -3287,7 +3321,14 @@ function calcInstallment(){
   }
 
   const remain=start?getInstallRemain({start,months}):months;
-  const remainAmt=monthly*remain;
+  // 원금균등: 납부된 원금 차감하여 잔여 원금 표시
+  let remainAmt;
+  if(repay==='원금균등'&&total&&months){
+    const elapsed=months-remain;
+    remainAmt=Math.max(0,total-Math.round(total/months)*elapsed);
+  } else {
+    remainAmt=monthly*remain;
+  }
   let endDate='—';
   if(start){const s=new Date(start+'-01');s.setMonth(s.getMonth()+months-1);endDate=s.getFullYear()+'년 '+(s.getMonth()+1)+'월';}
 
@@ -3362,7 +3403,7 @@ function renderInstallList(){
   const el=document.getElementById('installListCard');if(!el)return;
   const items=(DB.install||[]).filter(r=>r&&r.id&&r.name&&r.status!=='완료').sort((a,b)=>(b.monthly||0)-(a.monthly||0));
   const totalMonthly=items.reduce((s,r)=>s+(Number(r.monthly)||0),0);
-  const totalRemain=items.reduce((s,r)=>s+((Number(r.monthly)||0)*getInstallRemain(r)),0);
+  const totalRemain=items.reduce((s,r)=>s+getInstallRemainAmt(r),0);
   const thisMonth=items.reduce((s,r)=>s+(getInstallRemain(r)>0?(Number(r.monthly)||0):0),0);
   const e=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   e('install-total-monthly','-'+fmtN(totalMonthly)+'/월');
@@ -3390,7 +3431,7 @@ function renderInstallList(){
         <div style="height:100%;border-radius:4px;background:var(--primary);width:${pct}%"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub)">
-        <span>잔여 ${remain}회 · ${fmtN((Number(r.monthly)||0)*remain)}원</span>
+        <span>잔여 ${remain}회 · ${fmtN(getInstallRemainAmt(r))}원</span>
         <span>완료: ${r.end?r.end.slice(0,7).replace('-','년 ')+'월':'—'}</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px">
@@ -4269,10 +4310,18 @@ function editDebtEntry(id){
   setComma('debt-monthly',r.monthly);
   document.getElementById('debt-start').value=toMonthInput(r.start);
   document.getElementById('debt-end').value=toMonthInput(r.end);
-  document.getElementById('debt-memo').value=r.memo||'';
+  // 메모에 ISO 날짜가 저장된 경우 빈 값으로 (손상 데이터)
+  const memoVal=r.memo||'';
+  document.getElementById('debt-memo').value=memoVal.includes('T')&&memoVal.includes('Z')?'':memoVal;
   setInputTab('debt'); goPage('input');
   calcDebtMonthly();
-  showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
+  // 손상된 날짜 데이터 경고
+  const hasCorruptDate=(!toMonthInput(r.start)&&r.start)||(!toMonthInput(r.end)&&r.end)||(memoVal.includes('T')&&memoVal.includes('Z'));
+  if(hasCorruptDate){
+    setTimeout(()=>showToast('⚠️ 날짜 데이터가 손상되어 있습니다. 날짜를 다시 입력하고 저장해주세요.','warn'),300);
+  } else {
+    showToast('📂 데이터 불러옴 — 수정 후 저장하세요','success');
+  }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 async function deleteDebtEntry(id){ if(!confirm('삭제할까요?'))return; await gasDelete('debt',id); renderAll(); showToast('삭제 완료','error'); }
