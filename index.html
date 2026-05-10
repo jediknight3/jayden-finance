@@ -790,38 +790,44 @@ body {
           <button onclick="exportInvCSV()" style="border:none;background:var(--green);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📥 CSV</button>
         </div>
         <!-- 월별 테이블 -->
-        <div id="inv-monthly-table" style="display:none;background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
-          <table style="width:100%;border-collapse:collapse;min-width:560px">
-            <thead><tr style="background:#1A2B4A">
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">년/월</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">입금누적</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">출금누적</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전월대비 자산</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전월대비율</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">월실출금</th>
-            </tr></thead>
+        <div id="inv-monthly-table" style="display:none;background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;margin-bottom:16px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#1A2B4A">
+                <th rowspan="2" style="padding:8px 8px 8px 12px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;white-space:nowrap;border-right:1px solid rgba(255,255,255,.15);vertical-align:middle">기간</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">현재자산</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">손익금</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">수익률</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">전월대비</th>
+              </tr>
+              <tr style="background:#1A2B4A">
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">투자원금</th>
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">입금누적</th>
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">출금누적</th>
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">%p · 실출금</th>
+              </tr>
+            </thead>
             <tbody id="invMonthlyTbody"></tbody>
           </table>
         </div>
         <!-- 주별 테이블 -->
-        <div id="inv-weekly-table" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
-          <table style="width:100%;border-collapse:collapse;min-width:560px">
-            <thead><tr style="background:#1A2B4A">
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">주차</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">입금누적</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">출금누적</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전주대비 자산</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">전주대비율</th>
-              <th style="padding:10px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">주실출금</th>
-            </tr></thead>
+        <div id="inv-weekly-table" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;margin-bottom:16px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#1A2B4A">
+                <th rowspan="2" style="padding:8px 8px 8px 12px;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);text-align:left;white-space:nowrap;border-right:1px solid rgba(255,255,255,.15);vertical-align:middle">주차</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">현재자산</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">손익금</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">수익률</th>
+                <th style="padding:7px 8px 2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">전주대비</th>
+              </tr>
+              <tr style="background:#1A2B4A">
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">투자원금</th>
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">입금누적</th>
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">출금누적</th>
+                <th style="padding:2px 8px 7px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">%p · 실출금</th>
+              </tr>
+            </thead>
             <tbody id="invWeeklyTbody"></tbody>
           </table>
         </div>
@@ -6270,19 +6276,22 @@ function renderInvMonthly(){
       const momRateStr = momRateVal==null ? '<span style="color:var(--sub)">—</span>' :
         `<span style="color:${momRateVal>=0?'var(--green)':'var(--red)'};font-weight:600">${momRateVal>=0?'+':''}${(momRateVal*100).toFixed(1)}%p</span>`;
       prevCurr=m.curr; prevRate=m.rate;
-      return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-        <td style="padding:9px 14px;font-size:11px;font-weight:700;white-space:nowrap">${fmtMo(m.month)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(m.depCum)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(m.wdCum)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(m.prin)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(m.curr)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${m.pnl>=0?'var(--green)':'var(--red)'}">${m.pnl>=0?'+':''}${fmtN(m.pnl)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${m.rate>=0?'var(--green)':'var(--red)'}">${fmtP(m.rate)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:center">${momRateStr}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;color:var(--red);font-weight:600">${m.wdMonth>0?'-'+fmtN(m.wdMonth):'—'}</td>
+      const bg=i%2?'':'background:var(--gray-50)';
+      const wdStr=m.wdMonth>0?`<span style="color:var(--red)"> · -${fmtN(m.wdMonth)}</span>`:'';
+      return `<tr style="${bg}">
+        <td rowspan="2" style="padding:8px 8px 8px 12px;font-size:11px;font-weight:700;white-space:nowrap;vertical-align:middle;border-right:1px solid var(--gray-100)">${fmtMo(m.month)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right;font-weight:700">${fmtN(m.curr)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${m.pnl>=0?'var(--green)':'var(--red)'}">${m.pnl>=0?'+':''}${fmtN(m.pnl)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${m.rate>=0?'var(--green)':'var(--red)'}">${fmtP(m.rate)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right">${momStr}</td>
+      </tr>
+      <tr style="${bg}">
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(m.prin)}</td>
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(m.depCum)}</td>
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(m.wdCum)}</td>
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${momRateStr}${wdStr}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--sub)">데이터 없음</td></tr>';
+    }).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--sub)">데이터 없음</td></tr>';
   }
 
   // 주별 합계 테이블
@@ -6297,19 +6306,22 @@ function renderInvMonthly(){
       const momRateStr = momRateVal==null ? '<span style="color:var(--sub)">—</span>' :
         `<span style="color:${momRateVal>=0?'var(--green)':'var(--red)'};font-weight:600">${momRateVal>=0?'+':''}${(momRateVal*100).toFixed(1)}%p</span>`;
       prevCurr=w.curr; prevRate=w.rate;
-      return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-        <td style="padding:9px 14px;font-size:11px;font-weight:700;white-space:nowrap">${fmtPeriod(w.week)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(w.depCum)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(w.wdCum)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(w.prin)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(w.curr)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${w.pnl>=0?'var(--green)':'var(--red)'}">${w.pnl>=0?'+':''}${fmtN(w.pnl)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${w.rate>=0?'var(--green)':'var(--red)'}">${fmtP(w.rate)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:center">${momRateStr}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;color:var(--red);font-weight:600">${w.wdWeek>0?'-'+fmtN(w.wdWeek):'—'}</td>
+      const bg=i%2?'':'background:var(--gray-50)';
+      const wdStr=w.wdWeek>0?`<span style="color:var(--red)"> · -${fmtN(w.wdWeek)}</span>`:'';
+      return `<tr style="${bg}">
+        <td rowspan="2" style="padding:8px 8px 8px 12px;font-size:11px;font-weight:700;white-space:nowrap;vertical-align:middle;border-right:1px solid var(--gray-100)">${fmtPeriod(w.week)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right;font-weight:700">${fmtN(w.curr)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${w.pnl>=0?'var(--green)':'var(--red)'}">${w.pnl>=0?'+':''}${fmtN(w.pnl)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${w.rate>=0?'var(--green)':'var(--red)'}">${fmtP(w.rate)}</td>
+        <td style="padding:7px 8px 2px;font-size:11px;text-align:right">${momStr}</td>
+      </tr>
+      <tr style="${bg}">
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(w.prin)}</td>
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(w.depCum)}</td>
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(w.wdCum)}</td>
+        <td style="padding:2px 8px 7px;font-size:10px;text-align:right;color:var(--sub)">${momRateStr}${wdStr}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--sub)">주별 데이터 없음<br><span style="font-size:11px">입력 탭 → 🗓 주별로 데이터를 입력하세요</span></td></tr>';
+    }).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--sub)">주별 데이터 없음<br><span style="font-size:11px">입력 탭 → 🗓 주별로 데이터를 입력하세요</span></td></tr>';
   }
 
   // 공용: 계좌별 상세 테이블 렌더러 (월별/주별 공통)
@@ -6318,19 +6330,22 @@ function renderInvMonthly(){
     let prevR=null, prevRate=null;
     return `<div style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow-s)">
       <div style="background:${headerColor};color:#fff;padding:9px 14px;font-size:12px;font-weight:700">${acct}</div>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-      <table style="width:100%;border-collapse:collapse;min-width:420px">
-        <thead><tr style="background:#1A2B4A">
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;padding-left:14px;white-space:nowrap">${periodLabel}</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">입금누적</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">출금누적</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">투자원금</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">현재자산</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">손익금</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right;white-space:nowrap">수익률</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap">전기대비 자산</th>
-          <th style="padding:8px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap">전기대비율</th>
-        </tr></thead>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#1A2B4A">
+            <th rowspan="2" style="padding:7px 8px 7px 12px;font-size:10px;color:rgba(255,255,255,.8);text-align:left;white-space:nowrap;border-right:1px solid rgba(255,255,255,.15);vertical-align:middle">${periodLabel}</th>
+            <th style="padding:6px 8px 2px;font-size:10px;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">현재자산</th>
+            <th style="padding:6px 8px 2px;font-size:10px;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">손익금</th>
+            <th style="padding:6px 8px 2px;font-size:10px;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">수익률</th>
+            <th style="padding:6px 8px 2px;font-size:10px;color:rgba(255,255,255,.9);text-align:right;white-space:nowrap">전기대비</th>
+          </tr>
+          <tr style="background:#1A2B4A">
+            <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">투자원금</th>
+            <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">입금누적</th>
+            <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">출금누적</th>
+            <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:right;white-space:nowrap">전기대비율</th>
+          </tr>
+        </thead>
         <tbody>
         ${rows.map((r,i)=>{
           const prin=(r.depCum||0)-(r.wdCum||0);
@@ -6341,20 +6356,23 @@ function renderInvMonthly(){
           const momStr=mom==null?'<span style="color:var(--sub)">—</span>':`<span style="color:${mom>=0?'var(--green)':'var(--red)'};font-weight:700">${mom>=0?'▲':'▼'} ${fmtN(Math.abs(mom))}</span>`;
           const momRateStr=momRateVal==null?'<span style="color:var(--sub)">—</span>':`<span style="color:${momRateVal>=0?'var(--green)':'var(--red)'};font-weight:600">${momRateVal>=0?'+':''}${(momRateVal*100).toFixed(1)}%p</span>`;
           prevR=r.curr; prevRate=rate;
-          return `<tr style="${i%2?'':'background:var(--gray-50)'}">
-            <td style="padding:9px 14px;font-size:11px;font-weight:700;white-space:nowrap">${fmtPeriod(r.month)}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(r.depCum||0)}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(r.wdCum||0)}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:right">${fmtN(prin)}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtN(r.curr)}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${fmtN(pnl)}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${rate>=0?'var(--green)':'var(--red)'}">${fmtP(rate)}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:center">${momStr}</td>
-            <td style="padding:9px 10px;font-size:11px;text-align:center">${momRateStr}</td>
+          const bg=i%2?'':'background:var(--gray-50)';
+          return `<tr style="${bg}">
+            <td rowspan="2" style="padding:7px 8px 7px 12px;font-size:11px;font-weight:700;white-space:nowrap;vertical-align:middle;border-right:1px solid var(--gray-100)">${fmtPeriod(r.month)}</td>
+            <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700">${fmtN(r.curr)}</td>
+            <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${fmtN(pnl)}</td>
+            <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${rate>=0?'var(--green)':'var(--red)'}">${fmtP(rate)}</td>
+            <td style="padding:6px 8px 2px;font-size:11px;text-align:right">${momStr}</td>
+          </tr>
+          <tr style="${bg}">
+            <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(prin)}</td>
+            <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(r.depCum||0)}</td>
+            <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(r.wdCum||0)}</td>
+            <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${momRateStr}</td>
           </tr>`;
         }).join('')}
         </tbody>
-      </table></div>
+      </table>
     </div>`;
   }
 
