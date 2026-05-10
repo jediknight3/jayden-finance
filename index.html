@@ -6221,7 +6221,7 @@ function renderInvSummary(){
           <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.prin)}</td>
           <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.depCum)}</td>
           <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.wdCum)}</td>
-          <td style="padding:2px 8px 6px;font-size:10px;text-align:center;color:var(--sub)">${fmtMo(a.month)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:center;color:var(--sub)">${fmtPeriod(a.month)}</td>
         </tr>`;
       }).join('')}
       <tr style="background:#1A2B4A;border-top:2px solid var(--yellow)">
@@ -6276,7 +6276,7 @@ function renderInvSummary(){
           <div style="font-size:9px;color:var(--sub)">출금누적</div>
           <div style="font-size:9px;text-align:right;color:var(--sub)">${fmtN(a.wdCum)}</div>
           <div style="font-size:9px;color:var(--sub)">기준월</div>
-          <div style="font-size:9px;text-align:right;color:var(--sub)">${fmtMo(a.month)}</div>
+          <div style="font-size:9px;text-align:right;color:var(--sub)">${fmtPeriod(a.month)}</div>
         </div>
       </div>`;
     }).join('')}
