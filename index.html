@@ -4916,7 +4916,9 @@ function buildShortPrompt(type){
   const last=mos.length?mos[mos.length-1]:null;
   const prev=mos.length>1?mos[mos.length-2]:null;
   const chgStr=last&&prev?('\n【전월대비】'+fmtN(last.curr-prev.curr)+'원 변화'):'';
-  const baseStr='재무 분석 전문가로서 한국어로 분석.\n【현황】순자산:'+fmtM(nw.total)+
+  const nowDate=new Date(); const nowYM=nowMo();
+  const dateCtx='【현재날짜】'+nowDate.getFullYear()+'년 '+String(nowDate.getMonth()+1)+'월 ('+nowYM+')';
+  const baseStr='재무 분석 전문가로서 한국어로 분석.\n'+dateCtx+'\n【현황】순자산:'+fmtM(nw.total)+
     ' / 투자:'+fmtM(inv.curr)+' / 수익률:'+fmtP(inv.rate)+
     ' / 손익:'+fmtN(inv.pnl)+'원 / 부채:'+fmtM(nw.debt)+chgStr;
   const topAccts=getAllInvLatest().slice(0,5).map(a=>a.acct+':'+fmtM(a.curr)+'('+fmtP(a.rate)+')').join(', ');
@@ -4955,8 +4957,8 @@ function buildShortPrompt(type){
   }
 
   const p={
-    monthly:   baseStr+'\n【계좌】'+topAccts+'\n이번달 재무 리포트: 1)성과요약 2)잘된점 3)개선점 4)다음달 액션',
-    annual:    baseStr+'\n【최근6개월】'+recentMos+'\n연간 성과 분석, 수익률 추이, 개선 방향을 작성해주세요.',
+    monthly:   baseStr+'\n【계좌】'+topAccts+'\n'+nowDate.getFullYear()+'년 '+String(nowDate.getMonth()+1)+'월 재무 리포트: 1)성과요약 2)잘된점 3)개선점 4)다음달 액션',
+    annual:    baseStr+'\n【최근6개월】'+recentMos+'\n'+nowDate.getFullYear()+'년 연간 성과 분석, 수익률 추이, 개선 방향을 작성해주세요.',
     invest:    '투자 포트폴리오 분석.\n【계좌별】'+allAccts+'\n총수익률:'+fmtP(inv.rate)+' / 총손익:'+fmtM(inv.pnl)+'\n포트폴리오 분석, 리스크, 개선 방향.',
     advice:    baseStr+'\n목표: 2029년3월 8.5억(더샵 입주) / 달성률:'+goalPct+'%\n실행 가능한 재무 조언 3-5가지.',
     portfolio: portfolioPrompt
