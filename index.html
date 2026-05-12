@@ -1325,18 +1325,6 @@ body {
         <button class="btn btn-ghost btn-sm" onclick="clearInvForm()">↺</button>
       </div>
     </div>
-    <!-- 입력 이력 -->
-    <div style="padding:0 20px 16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:13px;font-weight:700;color:var(--text)">📋 입력 이력</span>
-        <div style="display:flex;gap:6px">
-          <button id="del-corrupted-btn" onclick="deleteCorruptedWeeks()" style="display:none;padding:5px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;background:#FFF0F1;color:var(--red);cursor:pointer">🗑 손상항목 삭제</button>
-          <select id="inv-filter-acct" onchange="renderInvLog()" style="padding:5px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff;color:var(--text)"><option value="">전체</option></select>
-        </div>
-      </div>
-      <div id="inv-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:var(--shadow-s)"></div>
-    </div>
-
     <!-- 이미지로 현재자산 일괄 업데이트 -->
     <div class="form-card" style="margin-top:0">
       <div class="form-title">📷 이미지로 현재자산 일괄 입력</div>
@@ -1368,7 +1356,29 @@ body {
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- 입력 이력 -->
+    <div style="padding:0 20px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">📋 입력 이력</span>
+        <button id="del-corrupted-btn" onclick="deleteCorruptedWeeks()" style="display:none;padding:5px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;background:#FFF0F1;color:var(--red);cursor:pointer">🗑 손상항목 삭제</button>
+      </div>
+      <!-- 필터 바 -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <select id="inv-filter-type" onchange="renderInvLog()" style="flex:1;min-width:72px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff;color:var(--text)">
+          <option value="">전체</option>
+          <option value="month">월별만</option>
+          <option value="week">주별만</option>
+        </select>
+        <select id="inv-filter-year" onchange="renderInvLog()" style="flex:1;min-width:80px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff;color:var(--text)">
+          <option value="">전체 년도</option>
+        </select>
+        <select id="inv-filter-acct" onchange="renderInvLog()" style="flex:2;min-width:100px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:11px;background:#fff;color:var(--text)">
+          <option value="">전체 계좌</option>
+        </select>
+      </div>
+      <div id="inv-log-wrap" style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:var(--shadow-s)"></div>
+    </div>
 
   <!-- 계좌 입력 -->
   <div id="inp-bank" style="display:none">
@@ -4032,20 +4042,38 @@ function clearInvForm(){
 
 // isCorruptedWeek는 위 isWeekPeriod 정의 근처에 이동됨
 function renderInvLog(){
+  // populate account dropdown
   const fa=document.getElementById('inv-filter-acct');
   if(fa){
-    const accts=[...new Set(DB.invest.map(r=>r.acct))];
+    const accts=[...new Set(DB.invest.map(r=>r.acct))].filter(Boolean).sort();
     const cur=fa.value;
-    fa.innerHTML='<option value="">전체</option>'+accts.map(a=>`<option value="${a.replace(/"/g,'&quot;')}" ${a===cur?'selected':''}>${getAcctDisplay(a)}</option>`).join('');
+    fa.innerHTML='<option value="">전체 계좌</option>'+accts.map(a=>`<option value="${a.replace(/"/g,'&quot;')}" ${a===cur?'selected':''}>${getAcctDisplay(a)}</option>`).join('');
   }
+  // populate year dropdown
+  const fy=document.getElementById('inv-filter-year');
+  if(fy){
+    const years=[...new Set(DB.invest.map(r=>{
+      const m=String(r.month||'');
+      return isWeekPeriod(m)?m.slice(0,4):isMonthPeriod(m)?m.slice(0,4):'';
+    }))].filter(Boolean).sort().reverse();
+    const curY=fy.value;
+    fy.innerHTML='<option value="">전체 년도</option>'+years.map(y=>`<option value="${y}" ${y===curY?'selected':''}>${y}년</option>`).join('');
+  }
+  const filterType=document.getElementById('inv-filter-type')?.value||'';
+  const filterYear=fy?.value||'';
+  const filterAcct=fa?.value||'';
   let rows=[...DB.invest].sort((a,b)=>b.month.localeCompare(a.month)||a.acct.localeCompare(b.acct));
-  if(fa&&fa.value) rows=rows.filter(r=>r.acct===fa.value);
+  if(filterAcct) rows=rows.filter(r=>r.acct===filterAcct);
+  if(filterType==='month') rows=rows.filter(r=>isMonthPeriod(r.month));
+  else if(filterType==='week') rows=rows.filter(r=>isWeekPeriod(r.month));
+  if(filterYear) rows=rows.filter(r=>String(r.month||'').startsWith(filterYear));
   const hasCorrupted=rows.some(r=>isCorruptedWeek(r.month));
   const btn=document.getElementById('del-corrupted-btn');
   if(btn) btn.style.display=hasCorrupted?'block':'none';
   const wrap=document.getElementById('inv-log-wrap');
   if(!wrap)return;
   if(!rows.length){ wrap.innerHTML='<div class="empty"><div class="empty-text">데이터 없음</div></div>'; return; }
+  const limit=filterType||filterYear||filterAcct?rows.length:200;
   wrap.innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:420px">
     <thead>
       <tr style="background:#1A2B4A">
@@ -4063,7 +4091,7 @@ function renderInvLog(){
       </tr>
     </thead>
     <tbody>
-    ${rows.slice(0,50).map((r,i)=>{
+    ${rows.slice(0,limit).map((r,i)=>{
       const corrupted=isCorruptedWeek(r.month);
       const prin=(r.depCum||0)-(r.wdCum||0);
       const pnl=r.curr!=null?r.curr-prin:null;
