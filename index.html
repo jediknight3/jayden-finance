@@ -3977,9 +3977,11 @@ function calcInvPreview(){
   const sameType = invMode==='week' ? isWeekPeriod : isMonthPeriod;
   const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period).sort((a,b)=>a.month.localeCompare(b.month));
   let prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
-  // 주별 첫 입력이면 월별 마지막 레코드에서 누적값 상속
+  // 주별 첫 입력이면 월별 마지막 레코드에서 누적값 상속 (해당 주 달 이전까지만)
   if(!prevLast&&invMode==='week'){
-    const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+    const wInfo=getWeekInfo(period);
+    const weekMo=wInfo.year+'-'+String(wInfo.month).padStart(2,'0');
+    const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)&&r.month<weekMo).sort((a,b)=>a.month.localeCompare(b.month));
     prevLast=mRows.length?mRows[mRows.length-1]:null;
   }
   const prevDep=prevLast?prevLast.depCum||0:0, prevWd=prevLast?prevLast.wdCum||0:0;
@@ -4011,9 +4013,11 @@ async function saveInvEntry(){
   const prevRows=DB.invest.filter(r=>r.acct===acct&&sameType(r.month)&&r.month<period)
     .sort((a,b)=>a.month.localeCompare(b.month));
   let prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
-  // 주별 첫 입력이면 월별 마지막 레코드에서 누적값 상속
+  // 주별 첫 입력이면 월별 마지막 레코드에서 누적값 상속 (해당 주 달 이전까지만)
   if(!prevLast&&invMode==='week'){
-    const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+    const wInfo=getWeekInfo(period);
+    const weekMo=wInfo.year+'-'+String(wInfo.month).padStart(2,'0');
+    const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)&&r.month<weekMo).sort((a,b)=>a.month.localeCompare(b.month));
     prevLast=mRows.length?mRows[mRows.length-1]:null;
   }
   const depCum=(prevLast?prevLast.depCum||0:0)+dep;
@@ -5734,7 +5738,9 @@ async function confirmBulkSave(){
         .sort((a,b)=>a.month.localeCompare(b.month));
       let prevLast=prevRows.length?prevRows[prevRows.length-1]:null;
       if(!prevLast&&isWeek){
-        const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+        const wInfo=getWeekInfo(period);
+        const weekMo=wInfo.year+'-'+String(wInfo.month).padStart(2,'0');
+        const mRows=DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)&&r.month<weekMo).sort((a,b)=>a.month.localeCompare(b.month));
         prevLast=mRows.length?mRows[mRows.length-1]:null;
       }
       rec={acct, month:period, dep:0, wd:0,
