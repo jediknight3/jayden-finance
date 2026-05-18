@@ -6604,8 +6604,13 @@ function renderInvMonthly(){
   // 계좌별 월별 상세
   const detailEl = document.getElementById('invMonthlyDetail');
   if(detailEl){
-    const ACCT_LIST2 = ["토스증권(본인)","신한(ISA)","토스(일이)","신한(일이)ISA","토스(수빈)","토스(유빈)","업비트"];
-    detailEl.innerHTML = ACCT_LIST2.map(acct=>{
+    const ACCT_LIST2 = [...new Set(DB.invest.filter(r=>isMonthPeriod(r.month)).map(r=>r.acct))];
+    const sortedAccts = ACCT_LIST2.map(acct=>{
+      const rows=DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isMonthPeriod(r.month));
+      const latestCurr=rows.length?Math.max(...rows.map(r=>r.curr)):0;
+      return {acct,latestCurr};
+    }).sort((a,b)=>b.latestCurr-a.latestCurr).map(x=>x.acct);
+    detailEl.innerHTML = sortedAccts.map(acct=>{
       const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isMonthPeriod(r.month)&&!HIDDEN_MO_INV.has(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
       return renderAcctDetailTable('🏦 '+getAcctDisplay(acct), rows, 'linear-gradient(90deg,var(--green),#00695C)', '기간');
     }).join('');
@@ -6614,7 +6619,12 @@ function renderInvMonthly(){
   // 계좌별 주별 상세
   const weekDetailEl = document.getElementById('invWeeklyDetail');
   if(weekDetailEl){
-    const accts = [...new Set(DB.invest.filter(r=>isWeekPeriod(r.month)).map(r=>r.acct))].sort();
+    const weekAccts = [...new Set(DB.invest.filter(r=>isWeekPeriod(r.month)).map(r=>r.acct))];
+    const accts = weekAccts.map(acct=>{
+      const rows=DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isWeekPeriod(r.month));
+      const latestCurr=rows.length?Math.max(...rows.map(r=>r.curr)):0;
+      return {acct,latestCurr};
+    }).sort((a,b)=>b.latestCurr-a.latestCurr).map(x=>x.acct);
     if(!accts.length){
       weekDetailEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">주별 데이터 없음<br><span style="font-size:11px">입력 탭 → 🗓 주별로 데이터를 입력하세요</span></div>';
     } else {
