@@ -613,6 +613,7 @@ let apiKey = '';
 let interimEl = null;
 let srcCount = 0, tgtCount = 0;
 let waveAnim = null;
+let restartTimer = null;
 
 // ── Init ─────────────────────────────────────────────────
 window.addEventListener('load', () => {
@@ -719,14 +720,17 @@ function startRecording() {
 
   recog.onerror = e => {
     if (['no-speech','aborted'].includes(e.error)) return;
+    if (e.error === 'not-allowed') { stopRecording(); alert('마이크 권한이 거부되었습니다.'); return; }
     setStatus('오류: ' + e.error, false);
-    if (running && e.error !== 'not-allowed') {
-      setTimeout(() => { try { recog.start(); } catch(_){} }, 1200);
-    }
   };
 
   recog.onend = () => {
-    if (running) { try { recog.start(); } catch(_){} }
+    if (!running) return;
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(() => {
+      if (!running) return;
+      try { recog.start(); } catch(_) {}
+    }, 500);
   };
 
   try { recog.start(); }
@@ -735,6 +739,7 @@ function startRecording() {
 
 function stopRecording() {
   running = false;
+  clearTimeout(restartTimer);
   if (recog) { try { recog.stop(); } catch(_){} recog = null; }
   updateRecUI();
   setStatus('대기 중', false);
