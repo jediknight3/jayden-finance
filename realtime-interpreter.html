@@ -690,20 +690,10 @@ function toggleRecording() {
   if (running) stopRecording(); else startRecording();
 }
 
-async function startRecording() {
+function startRecording() {
   if (!apiKey) { alert('Anthropic API 키를 먼저 입력하고 저장해주세요.'); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { alert('이 브라우저는 음성 인식을 지원하지 않습니다.\nChrome / Edge를 사용해주세요.'); return; }
-
-  // 마이크 스트림을 미리 획득해 계속 유지 → 재시작 시 Chrome이 재허용 알림을 띄우지 않음
-  if (!micStream) {
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch(e) {
-      alert('마이크 권한을 허용해주세요.\n\n' + e.message);
-      return;
-    }
-  }
 
   running = true;
   updateRecUI();
@@ -734,27 +724,33 @@ function spawnRecog(SR) {
   };
 
   r.onerror = e => {
-    if (['no-speech', 'aborted'].includes(e.error)) return;
-    if (e.error === 'not-allowed') { stopRecording(); alert('마이크 권한이 거부되었습니다.'); return; }
-    setStatus('오류: ' + e.error, false);
+    if (e.error === 'not-allowed') {
+      stopRecording();
+      alert('마이크 권한이 거부되었습니다.\n주소창 왼쪽 🔒 아이콘 → 마이크 허용 후 다시 시도해주세요.');
+    }
+    // no-speech / aborted / audio-capture 등은 onend에서 자동 재시작
   };
 
   r.onend = () => {
     if (!running) return;
     clearTimeout(restartTimer);
-    // 새 인스턴스로 재시작 (micStream이 살아있으므로 알림 없음)
-    restartTimer = setTimeout(() => spawnRecog(SR), 300);
+    restartTimer = setTimeout(() => spawnRecog(SR), 200);
   };
 
-  try { r.start(); } catch(_) {}
+  try {
+    r.start();
+  } catch(e) {
+    setStatus('시작 오류: ' + e.message, false);
+    running = false;
+    updateRecUI();
+    stopWave();
+  }
 }
 
 function stopRecording() {
   running = false;
   clearTimeout(restartTimer);
   if (recog) { try { recog.stop(); } catch(_){} recog = null; }
-  // 마이크 스트림 해제
-  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   updateRecUI();
   setStatus('대기 중', false);
   stopWave();
