@@ -1,723 +1,396 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 동시통역 — AI Interpreter</title>
-  <style>
-    :root {
-      --bg: #0c0c14;
-      --surface: #14141f;
-      --surface2: #1e1e2e;
-      --surface3: #28283c;
-      --accent: #6366f1;
-      --accent2: #8b5cf6;
-      --accent-glow: rgba(99,102,241,0.3);
-      --text: #e8e8f8;
-      --text-dim: #7878a0;
-      --text-muted: #4a4a6a;
-      --green: #10b981;
-      --red: #f87171;
-      --border: #22223a;
-      --border2: #2e2e48;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      overflow: hidden;
-    }
-    body { display: flex; flex-direction: column; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>실시간 동시통역</title>
+<style>
+:root {
+  --bg:      #0f1117;
+  --panel:   #161b27;
+  --card:    #1e2436;
+  --border:  #2a3045;
+  --accent:  #5b73ff;
+  --a-glow:  rgba(91,115,255,.25);
+  --text:    #e2e8f8;
+  --dim:     #6b7a9e;
+  --muted:   #3d4766;
+  --green:   #34d399;
+  --red:     #f87171;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  font-size: 14px; line-height: 1.5; overflow: hidden; }
 
-    /* ── Header ── */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-shrink: 0;
-      position: relative;
-      z-index: 10;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 17px;
-      font-weight: 700;
-      white-space: nowrap;
-      letter-spacing: -0.3px;
-    }
-    .logo-icon {
-      width: 34px; height: 34px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 0 16px var(--accent-glow);
-    }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-left: auto;
-      flex-wrap: wrap;
-    }
-    .api-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .api-input {
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 7px 12px;
-      color: var(--text);
-      font-size: 13px;
-      outline: none;
-      width: 220px;
-      transition: border-color 0.2s;
-    }
-    .api-input:focus { border-color: var(--accent); }
-    .api-input::placeholder { color: var(--text-muted); }
-    .btn-sm {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 7px 14px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: opacity 0.15s;
-    }
-    .btn-sm:hover { opacity: 0.85; }
-    .model-sel {
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 7px 10px;
-      color: var(--text);
-      font-size: 13px;
-      cursor: pointer;
-      outline: none;
-    }
-    .model-sel:focus { border-color: var(--accent); }
+/* ── Layout ── */
+.app    { height: 100vh; display: flex; flex-direction: column; }
+header  { height: 52px; background: var(--panel); border-bottom: 1px solid var(--border);
+          display: flex; align-items: center; gap: 14px; padding: 0 18px; flex-shrink: 0; }
+.toolbar{ background: var(--panel); border-bottom: 1px solid var(--border);
+          display: flex; align-items: center; gap: 10px; padding: 8px 18px; flex-shrink: 0; flex-wrap: wrap; }
+.panels { flex: 1; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.panel  { display: flex; flex-direction: column; overflow: hidden;
+          border-right: 1px solid var(--border); }
+.panel:last-child { border-right: none; }
+.statusbar { height: 32px; background: var(--panel); border-top: 1px solid var(--border);
+             display: flex; align-items: center; gap: 8px; padding: 0 18px; flex-shrink: 0; }
 
-    /* ── Main layout ── */
-    .workspace {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 16px 20px;
-      gap: 14px;
-      overflow: hidden;
-    }
+/* ── Header ── */
+.brand { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.brand-ico { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+             background: linear-gradient(135deg, #5b73ff, #a855f7); font-size: 15px; }
+.api-row { flex: 1; display: flex; align-items: center; gap: 6px; max-width: 400px; margin-left: auto; }
+input.api { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 7px;
+            padding: 5px 10px; color: var(--text); font-size: 12px; outline: none; min-width: 0; }
+input.api:focus { border-color: var(--accent); }
+input.api::placeholder { color: var(--muted); }
+.btn-save { background: var(--accent); color: #fff; border: none; border-radius: 7px;
+            padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-save:hover { opacity: .88; }
+select.mdl { background: var(--card); border: 1px solid var(--border); border-radius: 7px;
+             padding: 5px 8px; color: var(--text); font-size: 12px; cursor: pointer; outline: none; }
 
-    /* ── Controls bar ── */
-    .controls {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-    }
-    .lang-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      min-width: 0;
-    }
-    .lang-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      white-space: nowrap;
-    }
-    .lang-sel {
-      flex: 1;
-      min-width: 0;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 7px 10px;
-      color: var(--text);
-      font-size: 13px;
-      cursor: pointer;
-      outline: none;
-    }
-    .lang-sel:focus { border-color: var(--accent); }
-    .swap-btn {
-      flex-shrink: 0;
-      width: 36px; height: 36px;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: 50%;
-      color: var(--text-dim);
-      font-size: 16px;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s;
-    }
-    .swap-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .ctrl-divider {
-      width: 1px; height: 28px;
-      background: var(--border);
-      flex-shrink: 0;
-    }
-    .tts-toggle {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      color: var(--text-dim);
-      white-space: nowrap;
-      user-select: none;
-    }
-    .switch {
-      width: 34px; height: 18px;
-      background: var(--surface3);
-      border: 1px solid var(--border2);
-      border-radius: 9px;
-      position: relative;
-      transition: background 0.2s;
-    }
-    .switch.on { background: var(--accent); border-color: var(--accent); }
-    .switch::after {
-      content: '';
-      position: absolute;
-      width: 12px; height: 12px;
-      background: #fff;
-      border-radius: 50%;
-      top: 2px; left: 2px;
-      transition: left 0.2s;
-    }
-    .switch.on::after { left: 18px; }
-    .btn-clear {
-      background: none;
-      border: 1px solid var(--border2);
-      border-radius: 8px;
-      padding: 7px 12px;
-      color: var(--text-muted);
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s;
-    }
-    .btn-clear:hover { border-color: var(--red); color: var(--red); }
-    .record-btn {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 20px;
-      border: none;
-      border-radius: 40px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .record-btn.idle {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #fff;
-      box-shadow: 0 0 20px var(--accent-glow);
-    }
-    .record-btn.idle:hover { box-shadow: 0 0 28px var(--accent-glow); transform: translateY(-1px); }
-    .record-btn.active {
-      background: var(--red);
-      color: #fff;
-      animation: pulse-rec 2s infinite;
-      box-shadow: 0 0 20px rgba(248,113,113,0.35);
-    }
-    @keyframes pulse-rec {
-      0%,100% { box-shadow: 0 0 20px rgba(248,113,113,0.35); }
-      50% { box-shadow: 0 0 32px rgba(248,113,113,0.55); }
-    }
-    .rec-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-    .record-btn.active .rec-dot { animation: blink-dot 1s infinite; }
-    @keyframes blink-dot {
-      0%,100% { opacity: 1; }
-      50% { opacity: 0.2; }
-    }
+/* ── Toolbar ── */
+.lang-row { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+select.lng { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 7px;
+             padding: 6px 8px; color: var(--text); font-size: 13px; cursor: pointer; outline: none; min-width: 0; }
+select.lng:focus { border-color: var(--accent); }
+.btn-swap { width: 30px; height: 30px; background: var(--card); border: 1px solid var(--border);
+            border-radius: 50%; color: var(--dim); font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            transition: all .15s; }
+.btn-swap:hover { border-color: var(--accent); color: var(--accent); }
+.sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+.tts-lbl { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim);
+           cursor: pointer; white-space: nowrap; user-select: none; }
+.sw { width: 30px; height: 16px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; position: relative; transition: all .2s; }
+.sw.on { background: var(--accent); border-color: var(--accent); }
+.sw::after { content: ''; position: absolute; width: 10px; height: 10px; background: #fff;
+             border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
+.sw.on::after { left: 16px; }
+.btn-clr { background: none; border: 1px solid var(--border); border-radius: 7px;
+           padding: 5px 10px; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.btn-clr:hover { border-color: var(--red); color: var(--red); }
+.btn-go { display: flex; align-items: center; gap: 6px; padding: 7px 16px; border: none;
+          border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+          flex-shrink: 0; transition: all .2s; }
+.btn-go.idle { background: linear-gradient(135deg,#5b73ff,#a855f7); color: #fff;
+               box-shadow: 0 0 14px var(--a-glow); }
+.btn-go.idle:hover { transform: translateY(-1px); box-shadow: 0 0 22px var(--a-glow); }
+.btn-go.live { background: var(--red); color: #fff; animation: pulse-btn 2s infinite; }
+@keyframes pulse-btn { 0%,100%{ box-shadow:0 0 10px rgba(248,113,113,.3); } 50%{ box-shadow:0 0 20px rgba(248,113,113,.5); } }
+.rdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.btn-go.live .rdot { animation: blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    /* ── Panels ── */
-    .panels {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      overflow: hidden;
-      min-height: 0;
-    }
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .panel-head {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-    .panel-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-    }
-    .panel-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .lang-chip {
-      font-size: 11px;
-      padding: 3px 9px;
-      border-radius: 20px;
-      background: var(--surface2);
-      color: var(--text-dim);
-      border: 1px solid var(--border2);
-    }
-    .waveform {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      height: 18px;
-    }
-    .wb {
-      width: 2px;
-      background: var(--accent);
-      border-radius: 1px;
-      height: 4px;
-      opacity: 0.5;
-      transition: height 0.1s;
-    }
-    .panel-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      scroll-behavior: smooth;
-    }
-    .panel-body::-webkit-scrollbar { width: 3px; }
-    .panel-body::-webkit-scrollbar-track { background: transparent; }
-    .panel-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+/* ── Panel ── */
+.ph { padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--panel);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.pt { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+.pa { display: flex; align-items: center; gap: 7px; }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: var(--card);
+        color: var(--dim); border: 1px solid var(--border); }
+.wv { display: flex; align-items: center; gap: 2px; height: 14px; }
+.wb { width: 2px; height: 3px; background: var(--accent); border-radius: 1px; opacity: .35; }
+.btn-ca { font-size: 11px; padding: 2px 8px; background: none; border: 1px solid var(--border);
+          border-radius: 6px; color: var(--dim); cursor: pointer; }
+.btn-ca:hover { border-color: var(--accent); color: var(--accent); }
+.pb { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+.pb::-webkit-scrollbar { width: 3px; }
+.pb::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    /* ── Entries ── */
-    .entry {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 10px 12px;
-      background: var(--surface2);
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      animation: fadeIn 0.25s ease;
-    }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-    .entry-text {
-      font-size: 16px;
-      line-height: 1.65;
-      color: var(--text);
-      word-break: break-word;
-    }
-    .entry-text.interim {
-      color: var(--text-dim);
-      font-style: italic;
-    }
-    .entry-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 2px;
-    }
-    .entry-time {
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-    .entry-copy {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 11px;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    .entry-copy:hover { background: var(--surface3); color: var(--text-dim); }
+/* ── Entries ── */
+.entry { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+         padding: 9px 11px; animation: fadeUp .2s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+.et { font-size: 15px; line-height: 1.7; word-break: break-word; }
+.et.interim { color: var(--dim); font-style: italic; }
+.em { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.etime { font-size: 10px; color: var(--muted); }
+.ecopy { font-size: 10px; background: none; border: none; color: var(--muted); cursor: pointer;
+         padding: 1px 5px; border-radius: 3px; }
+.ecopy:hover { background: var(--panel); color: var(--dim); }
 
-    /* ── Translating indicator ── */
-    .translating {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text-muted);
-      font-size: 13px;
-      padding: 8px 12px;
-    }
-    .dots-wrap { display: flex; gap: 4px; }
-    .dots-wrap span {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: var(--accent);
-      animation: bounce-dot 1.2s infinite;
-    }
-    .dots-wrap span:nth-child(2) { animation-delay: 0.15s; }
-    .dots-wrap span:nth-child(3) { animation-delay: 0.3s; }
-    @keyframes bounce-dot {
-      0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
-      40% { transform: scale(1); opacity: 1; }
-    }
+/* Loading dots */
+.ldots { display: flex; align-items: center; gap: 6px; padding: 8px 11px; color: var(--dim); font-size: 12px; }
+.ld { display: flex; gap: 3px; }
+.ld span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: dp 1.2s infinite; }
+.ld span:nth-child(2){animation-delay:.15s} .ld span:nth-child(3){animation-delay:.3s}
+@keyframes dp { 0%,80%,100%{transform:scale(.5);opacity:.4} 40%{transform:scale(1);opacity:1} }
 
-    /* ── Empty state ── */
-    .empty {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      color: var(--text-muted);
-      text-align: center;
-      padding: 20px;
-    }
-    .empty-icon { font-size: 36px; opacity: 0.35; }
-    .empty-text { font-size: 13px; line-height: 1.6; }
+/* Empty */
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+         gap: 8px; color: var(--muted); }
+.ei { font-size: 30px; opacity: .3; }
+.em2 { font-size: 12px; text-align: center; line-height: 1.6; }
 
-    /* ── Status bar ── */
-    .statusbar {
-      flex-shrink: 0;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-    .s-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--text-muted);
-      flex-shrink: 0;
-    }
-    .s-dot.on { background: var(--green); animation: pulse-s 1.5s infinite; }
-    @keyframes pulse-s { 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
-    .s-right { margin-left: auto; display: flex; gap: 12px; }
-    .btn-copy-all {
-      background: none;
-      border: 1px solid var(--border2);
-      border-radius: 6px;
-      padding: 3px 10px;
-      color: var(--text-muted);
-      font-size: 11px;
-      cursor: pointer;
-    }
-    .btn-copy-all:hover { border-color: var(--accent); color: var(--accent); }
+/* Statusbar */
+.sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.sdot.on { background: var(--green); animation: pdot 1.5s infinite; }
+@keyframes pdot { 0%,100%{opacity:1} 50%{opacity:.3} }
+.smsg { font-size: 11px; color: var(--dim); }
+.sstat { margin-left: auto; font-size: 10px; color: var(--muted); }
 
-    /* ── Responsive ── */
-    @media (max-width: 800px) {
-      html, body { overflow: auto; }
-      .workspace { overflow: visible; }
-      .panels { grid-template-columns: 1fr; height: auto; overflow: visible; }
-      .panel { min-height: 280px; }
-      header { flex-wrap: wrap; }
-      .api-input { width: 160px; }
-      .controls { flex-wrap: wrap; }
-      .lang-wrap { min-width: 40%; }
-    }
-    @media (max-width: 540px) {
-      .workspace { padding: 10px 12px; }
-      .api-input { width: 130px; }
-      .header-right { gap: 6px; }
-      .record-btn { padding: 9px 14px; font-size: 13px; }
-    }
-  </style>
+/* Responsive */
+@media(max-width:680px){
+  html,body{overflow:auto}
+  .app{height:auto}
+  .panels{grid-template-columns:1fr;overflow:visible}
+  .panel{min-height:220px;border-right:none;border-bottom:1px solid var(--border)}
+  .api-row{max-width:100%}
+}
+</style>
 </head>
 <body>
+<div class="app">
 
-<!-- ═══════════════════════ HEADER ═══════════════════════ -->
+<!-- ── Header ── -->
 <header>
-  <div class="logo">
-    <div class="logo-icon">🌐</div>
+  <div class="brand">
+    <div class="brand-ico">🌐</div>
     실시간 동시통역
   </div>
-  <div class="header-right">
-    <div class="api-row">
-      <input type="password" id="apiKeyInput" class="api-input" placeholder="Anthropic API Key (sk-ant-…)" />
-      <button class="btn-sm" onclick="saveApiKey()">저장</button>
-    </div>
-    <select id="modelSel" class="model-sel">
-      <option value="claude-haiku-4-5-20251001">⚡ Haiku (빠름)</option>
-      <option value="claude-sonnet-4-6">✨ Sonnet (정확)</option>
+  <div class="api-row">
+    <input type="password" class="api" id="apiInput" placeholder="Anthropic API Key  (sk-ant-…)">
+    <button class="btn-save" onclick="saveKey()">저장</button>
+    <select class="mdl" id="mdlSel" onchange="savePref()">
+      <option value="claude-haiku-4-5-20251001">⚡ Haiku</option>
+      <option value="claude-sonnet-4-6">✨ Sonnet</option>
     </select>
   </div>
 </header>
 
-<!-- ═══════════════════════ WORKSPACE ═══════════════════════ -->
-<div class="workspace">
-
-  <!-- Controls -->
-  <div class="controls">
-    <div class="lang-wrap">
-      <span class="lang-label">원본</span>
-      <select id="srcLang" class="lang-sel" onchange="onLangChange()">
-        <option value="ko-KR">한국어</option>
-        <option value="en-US">English (US)</option>
-        <option value="en-GB">English (UK)</option>
-        <option value="ja-JP">日本語</option>
-        <option value="zh-CN">中文 (简体)</option>
-        <option value="zh-TW">中文 (繁體)</option>
-        <option value="es-ES">Español</option>
-        <option value="fr-FR">Français</option>
-        <option value="de-DE">Deutsch</option>
-        <option value="pt-BR">Português (BR)</option>
-        <option value="ru-RU">Русский</option>
-        <option value="ar-SA">العربية</option>
-        <option value="vi-VN">Tiếng Việt</option>
-        <option value="th-TH">ภาษาไทย</option>
-        <option value="id-ID">Bahasa Indonesia</option>
-      </select>
-    </div>
-    <button class="swap-btn" onclick="swapLangs()" title="언어 교체">⇄</button>
-    <div class="lang-wrap">
-      <span class="lang-label">번역</span>
-      <select id="tgtLang" class="lang-sel" onchange="onLangChange()">
-        <option value="en-US">English (US)</option>
-        <option value="ko-KR">한국어</option>
-        <option value="ja-JP">日本語</option>
-        <option value="zh-CN">中文 (简体)</option>
-        <option value="zh-TW">中文 (繁體)</option>
-        <option value="es-ES">Español</option>
-        <option value="fr-FR">Français</option>
-        <option value="de-DE">Deutsch</option>
-        <option value="pt-BR">Português (BR)</option>
-        <option value="ru-RU">Русский</option>
-        <option value="ar-SA">العربية</option>
-        <option value="vi-VN">Tiếng Việt</option>
-        <option value="th-TH">ภาษาไทย</option>
-        <option value="id-ID">Bahasa Indonesia</option>
-      </select>
-    </div>
-    <div class="ctrl-divider"></div>
-    <label class="tts-toggle" onclick="toggleTTS()">
-      <div class="switch" id="ttsSwitch"></div>
-      🔊 자동 음성
-    </label>
-    <button class="btn-clear" onclick="clearAll()">🗑 지우기</button>
-    <button class="record-btn idle" id="recBtn" onclick="toggleRecording()">
-      <div class="rec-dot"></div>
-      <span id="recLabel">통역 시작</span>
-    </button>
+<!-- ── Toolbar ── -->
+<div class="toolbar">
+  <div class="lang-row">
+    <select class="lng" id="srcSel" onchange="onLang()"></select>
+    <button class="btn-swap" onclick="swapLang()" title="교체">⇄</button>
+    <select class="lng" id="tgtSel" onchange="onLang()"></select>
   </div>
+  <div class="sep"></div>
+  <label class="tts-lbl" onclick="toggleTTS()">
+    <div class="sw" id="ttsSw"></div>🔊 음성
+  </label>
+  <button class="btn-clr" onclick="clearAll()">🗑 지우기</button>
+  <button class="btn-go idle" id="goBtn" onclick="toggle()">
+    <div class="rdot"></div>
+    <span id="goLbl">통역 시작</span>
+  </button>
+</div>
 
-  <!-- Panels -->
-  <div class="panels">
-    <!-- Source panel -->
-    <div class="panel">
-      <div class="panel-head">
-        <span class="panel-title">원본 음성</span>
-        <div class="panel-meta">
-          <div class="waveform" id="waveform">
-            <div class="wb"></div><div class="wb"></div><div class="wb"></div>
-            <div class="wb"></div><div class="wb"></div><div class="wb"></div>
-            <div class="wb"></div><div class="wb"></div><div class="wb"></div>
-          </div>
-          <span class="lang-chip" id="srcChip">한국어</span>
+<!-- ── Panels ── -->
+<div class="panels">
+  <div class="panel">
+    <div class="ph">
+      <span class="pt">원본 음성</span>
+      <div class="pa">
+        <div class="wv" id="wv">
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
         </div>
-      </div>
-      <div class="panel-body" id="srcBody">
-        <div class="empty" id="srcEmpty">
-          <div class="empty-icon">🎙️</div>
-          <div class="empty-text">통역 시작을 누르고<br>말씀하세요</div>
-        </div>
+        <span class="chip" id="srcChip"></span>
       </div>
     </div>
-
-    <!-- Translation panel -->
-    <div class="panel">
-      <div class="panel-head">
-        <span class="panel-title">번역 결과</span>
-        <div class="panel-meta">
-          <button class="btn-copy-all" onclick="copyAllTranslations()">전체 복사</button>
-          <span class="lang-chip" id="tgtChip">English</span>
-        </div>
-      </div>
-      <div class="panel-body" id="tgtBody">
-        <div class="empty" id="tgtEmpty">
-          <div class="empty-icon">🌐</div>
-          <div class="empty-text">번역된 내용이<br>여기에 표시됩니다</div>
-        </div>
+    <div class="pb" id="srcBody">
+      <div class="empty" id="srcEmpty">
+        <div class="ei">🎙️</div>
+        <div class="em2">통역 시작을 누르고<br>말씀하세요</div>
       </div>
     </div>
   </div>
-
-  <!-- Status bar -->
-  <div class="statusbar">
-    <div class="s-dot" id="sDot"></div>
-    <span id="sText">대기 중 — API 키를 입력하고 통역 시작을 눌러주세요</span>
-    <div class="s-right">
-      <span id="sStats"></span>
+  <div class="panel">
+    <div class="ph">
+      <span class="pt">번역 결과</span>
+      <div class="pa">
+        <button class="btn-ca" onclick="copyAll()">전체 복사</button>
+        <span class="chip" id="tgtChip"></span>
+      </div>
+    </div>
+    <div class="pb" id="tgtBody">
+      <div class="empty" id="tgtEmpty">
+        <div class="ei">🌐</div>
+        <div class="em2">번역된 내용이<br>여기에 표시됩니다</div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════ SCRIPT ═══════════════════════ -->
+<!-- ── Statusbar ── -->
+<div class="statusbar">
+  <div class="sdot" id="sdot"></div>
+  <span class="smsg" id="smsg">API 키를 입력 후 통역을 시작하세요</span>
+  <span class="sstat" id="sstat"></span>
+</div>
+
+</div><!-- .app -->
+
 <script>
 'use strict';
 
-// ── Constants ────────────────────────────────────────────
-const LANGS = {
-  'ko-KR':'한국어','en-US':'English','en-GB':'English (UK)',
-  'ja-JP':'日本語','zh-CN':'中文(简体)','zh-TW':'中文(繁體)',
-  'es-ES':'Español','fr-FR':'Français','de-DE':'Deutsch',
-  'pt-BR':'Português','ru-RU':'Русский','ar-SA':'العربية',
-  'vi-VN':'Tiếng Việt','th-TH':'ภาษาไทย','id-ID':'Bahasa Indonesia'
-};
+/* ═══════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════ */
+const LANGS = [
+  ['ko-KR','한국어'],['en-US','English (US)'],['en-GB','English (UK)'],
+  ['ja-JP','日本語'],['zh-CN','中文 (简体)'],['zh-TW','中文 (繁體)'],
+  ['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],
+  ['pt-BR','Português (BR)'],['ru-RU','Русский'],['ar-SA','العربية'],
+  ['vi-VN','Tiếng Việt'],['th-TH','ภาษาไทย'],['id-ID','Bahasa Indonesia'],
+];
+const LMAP = Object.fromEntries(LANGS);
 
-// ── State ─────────────────────────────────────────────────
-let recog = null;
-let micStream = null;   // 마이크 스트림을 계속 유지해 매번 재허용 알림 방지
-let running = false;
-let ttsOn = false;
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
 let apiKey = '';
-let interimEl = null;
-let srcCount = 0, tgtCount = 0;
-let waveAnim = null;
-let restartTimer = null;
+let live    = false;    // session running?
+let ttsOn   = false;
 
-// ── Init ─────────────────────────────────────────────────
-window.addEventListener('load', () => {
-  apiKey = localStorage.getItem('rt_interp_key') || '';
-  if (apiKey) {
-    document.getElementById('apiKeyInput').value = apiKey;
-    document.getElementById('apiKeyInput').placeholder = '✓ API 키 저장됨';
-  }
-  ttsOn = localStorage.getItem('rt_interp_tts') === '1';
-  document.getElementById('ttsSwitch').classList.toggle('on', ttsOn);
+let micStream  = null;  // kept alive to suppress repeated mic-access notifications
+let audioCtx   = null;
+let recog      = null;
+let rtTimer    = null;  // restart timer
+let interimEl  = null;
 
-  const savedSrc = localStorage.getItem('rt_interp_src');
-  const savedTgt = localStorage.getItem('rt_interp_tgt');
-  const savedModel = localStorage.getItem('rt_interp_model');
-  if (savedSrc) document.getElementById('srcLang').value = savedSrc;
-  if (savedTgt) document.getElementById('tgtLang').value = savedTgt;
-  if (savedModel) document.getElementById('modelSel').value = savedModel;
+let nSrc = 0, nTgt = 0;
+let waveTimer = null;
 
-  updateChips();
-});
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+(function boot() {
+  // Build language dropdowns
+  ['srcSel','tgtSel'].forEach(id => {
+    const sel = document.getElementById(id);
+    LANGS.forEach(([v,t]) => sel.add(new Option(t, v)));
+  });
 
-// ── API Key ───────────────────────────────────────────────
-function saveApiKey() {
-  apiKey = document.getElementById('apiKeyInput').value.trim();
-  if (!apiKey) { flash('API 키를 입력해주세요', 'warn'); return; }
-  localStorage.setItem('rt_interp_key', apiKey);
-  flash('API 키가 저장되었습니다 ✓');
+  // Restore preferences
+  apiKey = lsGet('key') || '';
+  ttsOn  = lsGet('tts') === '1';
+  document.getElementById('apiInput').value   = apiKey || '';
+  document.getElementById('ttsSw').classList.toggle('on', ttsOn);
+  document.getElementById('srcSel').value     = lsGet('src') || 'ko-KR';
+  document.getElementById('tgtSel').value     = lsGet('tgt') || 'en-US';
+  document.getElementById('mdlSel').value     = lsGet('mdl') || 'claude-haiku-4-5-20251001';
+
+  refreshChips();
+})();
+
+/* ═══════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════ */
+function saveKey() {
+  const v = document.getElementById('apiInput').value.trim();
+  if (!v) { flash('API 키를 입력하세요'); return; }
+  apiKey = v;
+  lsSet('key', v);
+  flash('저장 완료 ✓');
 }
 
-// ── Language ──────────────────────────────────────────────
-function onLangChange() {
-  updateChips();
-  localStorage.setItem('rt_interp_src', document.getElementById('srcLang').value);
-  localStorage.setItem('rt_interp_tgt', document.getElementById('tgtLang').value);
-  localStorage.setItem('rt_interp_model', document.getElementById('modelSel').value);
-  if (running) { stopRecording(); setTimeout(startRecording, 300); }
+function savePref() {
+  lsSet('src', document.getElementById('srcSel').value);
+  lsSet('tgt', document.getElementById('tgtSel').value);
+  lsSet('mdl', document.getElementById('mdlSel').value);
 }
 
-function swapLangs() {
-  const s = document.getElementById('srcLang');
-  const t = document.getElementById('tgtLang');
-  const tmp = s.value;
-  s.value = t.value;
-  t.value = tmp;
-  onLangChange();
+function onLang() {
+  refreshChips();
+  savePref();
+  if (live) { stopSession(); setTimeout(startSession, 300); }
 }
 
-function updateChips() {
-  const src = document.getElementById('srcLang').value;
-  const tgt = document.getElementById('tgtLang').value;
-  document.getElementById('srcChip').textContent = LANGS[src] || src;
-  document.getElementById('tgtChip').textContent = LANGS[tgt] || tgt;
+function swapLang() {
+  const s = document.getElementById('srcSel');
+  const t = document.getElementById('tgtSel');
+  [s.value, t.value] = [t.value, s.value];
+  onLang();
 }
 
-// ── TTS ───────────────────────────────────────────────────
+function refreshChips() {
+  document.getElementById('srcChip').textContent = LMAP[document.getElementById('srcSel').value] || '';
+  document.getElementById('tgtChip').textContent = LMAP[document.getElementById('tgtSel').value] || '';
+}
+
 function toggleTTS() {
   ttsOn = !ttsOn;
-  document.getElementById('ttsSwitch').classList.toggle('on', ttsOn);
-  localStorage.setItem('rt_interp_tts', ttsOn ? '1' : '0');
+  document.getElementById('ttsSw').classList.toggle('on', ttsOn);
+  lsSet('tts', ttsOn ? '1' : '0');
 }
 
-function speak(text, lang) {
-  if (!ttsOn || !window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang;
-  u.rate = 1;
-  speechSynthesis.speak(u);
-}
+/* ═══════════════════════════════════════
+   SESSION  (start / stop)
+═══════════════════════════════════════ */
+function toggle() { live ? stopSession() : startSession(); }
 
-// ── Recording ─────────────────────────────────────────────
-function toggleRecording() {
-  if (running) stopRecording(); else startRecording();
-}
+async function startSession() {
+  if (!apiKey) { alert('Anthropic API 키를 먼저 입력하고 저장하세요.'); return; }
 
-function startRecording() {
-  if (!apiKey) { alert('Anthropic API 키를 먼저 입력하고 저장해주세요.'); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { alert('이 브라우저는 음성 인식을 지원하지 않습니다.\nChrome / Edge를 사용해주세요.'); return; }
+  if (!SR) { alert('Chrome 또는 Edge 브라우저에서만 지원됩니다.'); return; }
 
-  running = true;
-  updateRecUI();
+  // ── AudioContext keep-alive ──────────────────────────────
+  // getUserMedia로 마이크 스트림을 먼저 획득해 AudioContext에 연결.
+  // 이 스트림이 살아있는 동안 SpeechRecognition이 재시작돼도
+  // Chrome은 마이크가 이미 사용 중임을 알기 때문에
+  // "마이크 액세스 허용됨" 알림을 반복하지 않는다.
+  if (!micStream) {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+      const src  = audioCtx.createMediaStreamSource(micStream);
+      const gain = audioCtx.createGain();
+      gain.gain.value = 0;          // 무음 — 피드백 방지
+      src.connect(gain);            // destination에는 연결 안 함
+    } catch (e) {
+      // getUserMedia 실패(권한 거부 등) → 그냥 계속 진행
+      // SpeechRecognition 자체 권한 처리로 fallback됨
+      micStream = null;
+      console.warn('keep-alive 스트림 실패:', e.message);
+    }
+  }
+
+  live = true;
+  updateBtn();
   setStatus('🎙 음성 인식 중…', true);
   startWave();
   spawnRecog(SR);
 }
 
-function spawnRecog(SR) {
-  if (!running) return;
+function stopSession() {
+  live = false;
+  clearTimeout(rtTimer);
 
-  const r = new SR();
-  r.lang = document.getElementById('srcLang').value;
-  r.interimResults = true;
+  if (recog)      { try { recog.stop(); } catch(_){} recog = null; }
+  if (micStream)  { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (audioCtx)   { try { audioCtx.close(); } catch(_){} audioCtx = null; }
+
+  updateBtn();
+  setStatus('대기 중');
+  stopWave();
+  removeInterim();
+}
+
+/* ═══════════════════════════════════════
+   SPEECH RECOGNITION
+═══════════════════════════════════════ */
+function spawnRecog(SR) {
+  if (!live) return;
+
+  const r      = new SR();
+  r.lang       = document.getElementById('srcSel').value;
   r.continuous = true;
+  r.interimResults = true;
   r.maxAlternatives = 1;
   recog = r;
 
   r.onresult = e => {
     let interim = '', final = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) final += t;
-      else interim += t;
+      if (e.results[i].isFinal) final   += e.results[i][0].transcript;
+      else                      interim += e.results[i][0].transcript;
     }
     if (interim) showInterim(interim);
     if (final)   commitFinal(final);
@@ -725,78 +398,38 @@ function spawnRecog(SR) {
 
   r.onerror = e => {
     if (e.error === 'not-allowed') {
-      stopRecording();
-      alert('마이크 권한이 거부되었습니다.\n주소창 왼쪽 🔒 아이콘 → 마이크 허용 후 다시 시도해주세요.');
+      stopSession();
+      alert('마이크 접근이 거부됐습니다.\n주소창의 🔒 → 마이크 허용 후 다시 시도하세요.');
     }
-    // no-speech / aborted / audio-capture 등은 onend에서 자동 재시작
+    // 'no-speech' / 'aborted' 등은 onend에서 자동 재시작
   };
 
   r.onend = () => {
-    if (!running) return;
-    clearTimeout(restartTimer);
-    restartTimer = setTimeout(() => spawnRecog(SR), 200);
+    if (!live) return;
+    clearTimeout(rtTimer);
+    rtTimer = setTimeout(() => spawnRecog(SR), 150);
   };
 
-  try {
-    r.start();
-  } catch(e) {
-    setStatus('시작 오류: ' + e.message, false);
-    running = false;
-    updateRecUI();
+  try { r.start(); } catch (e) {
+    setStatus('시작 실패: ' + e.message);
+    live = false;
+    updateBtn();
     stopWave();
   }
 }
 
-function stopRecording() {
-  running = false;
-  clearTimeout(restartTimer);
-  if (recog) { try { recog.stop(); } catch(_){} recog = null; }
-  updateRecUI();
-  setStatus('대기 중', false);
-  stopWave();
-  removeInterim();
-}
-
-function updateRecUI() {
-  const btn = document.getElementById('recBtn');
-  const lbl = document.getElementById('recLabel');
-  btn.className = 'record-btn ' + (running ? 'active' : 'idle');
-  lbl.textContent = running ? '통역 중지' : '통역 시작';
-}
-
-// ── Waveform animation ────────────────────────────────────
-const WAVE_HEIGHTS = [4,8,14,20,26,20,14,8,4];
-
-function startWave() {
-  stopWave();
-  const bars = document.querySelectorAll('.wb');
-  waveAnim = setInterval(() => {
-    bars.forEach((b, i) => {
-      const h = WAVE_HEIGHTS[i] * (0.4 + Math.random() * 0.6);
-      b.style.height = h + 'px';
-      b.style.opacity = '1';
-    });
-  }, 120);
-}
-
-function stopWave() {
-  if (waveAnim) { clearInterval(waveAnim); waveAnim = null; }
-  document.querySelectorAll('.wb').forEach(b => {
-    b.style.height = '4px'; b.style.opacity = '0.4';
-  });
-}
-
-// ── Transcript / Translation ──────────────────────────────
+/* ═══════════════════════════════════════
+   TRANSCRIPT DISPLAY
+═══════════════════════════════════════ */
 function showInterim(text) {
-  removeEmpty('srcEmpty');
+  killEmpty('srcEmpty');
   const body = document.getElementById('srcBody');
   if (!interimEl) {
-    interimEl = document.createElement('div');
-    interimEl.className = 'entry';
-    interimEl.innerHTML = '<div class="entry-text interim" id="interimTxt"></div>';
+    interimEl = mkEl('div', 'entry');
+    interimEl.innerHTML = '<div class="et interim" id="itxt"></div>';
     body.appendChild(interimEl);
   }
-  document.getElementById('interimTxt').textContent = text;
+  document.getElementById('itxt').textContent = text;
   body.scrollTop = body.scrollHeight;
 }
 
@@ -806,145 +439,158 @@ function removeInterim() {
 
 function commitFinal(text) {
   removeInterim();
-  removeEmpty('srcEmpty');
-  const body = document.getElementById('srcBody');
+  killEmpty('srcEmpty');
   const ts = nowStr();
-  const el = mkEntry(text, ts, () => copyText(text));
-  body.appendChild(el);
-  body.scrollTop = body.scrollHeight;
-  srcCount++;
-  updateStats();
-  translateAndAppend(text, ts);
+  appendEntry('srcBody', text, ts);
+  nSrc++;
+  refreshStats();
+  doTranslate(text, ts);
 }
 
-async function translateAndAppend(text, ts) {
-  const tgtLang = document.getElementById('tgtLang').value;
-  const tgtName = LANGS[tgtLang] || tgtLang;
-  const model   = document.getElementById('modelSel').value;
-  const body    = document.getElementById('tgtBody');
+/* ═══════════════════════════════════════
+   TRANSLATION  (Claude API)
+═══════════════════════════════════════ */
+async function doTranslate(text, ts) {
+  const tLang  = document.getElementById('tgtSel').value;
+  const tName  = LMAP[tLang] || tLang;
+  const model  = document.getElementById('mdlSel').value;
+  const body   = document.getElementById('tgtBody');
 
-  removeEmpty('tgtEmpty');
+  killEmpty('tgtEmpty');
 
-  // Loading indicator
-  const loader = document.createElement('div');
-  loader.className = 'translating';
-  loader.innerHTML = '<div class="dots-wrap"><span></span><span></span><span></span></div> 번역 중…';
+  // placeholder while waiting
+  const loader = mkEl('div', 'ldots');
+  loader.innerHTML = '<div class="ld"><span></span><span></span><span></span></div> 번역 중…';
   body.appendChild(loader);
   body.scrollTop = body.scrollHeight;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+      method : 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
+        'Content-Type'  : 'application/json',
+        'x-api-key'     : apiKey,
         'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-client-side-api-key-access': 'true'
+        'anthropic-dangerous-client-side-api-key-access': 'true',
       },
       body: JSON.stringify({
         model,
-        max_tokens: 2048,
-        system: `You are a professional simultaneous interpreter. Translate the input text into ${tgtName} naturally and fluently. Return ONLY the translated text — no explanations, no quotes, no extra commentary.`,
-        messages: [{ role: 'user', content: text }]
-      })
+        max_tokens: 1024,
+        system: `You are a professional simultaneous interpreter. Translate into ${tName}. Return ONLY the translated text — no explanation, no quotes.`,
+        messages: [{ role: 'user', content: text }],
+      }),
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
-      throw new Error(err.error?.message || res.statusText);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error?.message || res.statusText);
+
+    const out = (json.content?.[0]?.text || '').trim();
+    loader.replaceWith(makeEntryEl(out, ts));
+    body.scrollTop = body.scrollHeight;
+    nTgt++;
+    refreshStats();
+
+    if (ttsOn && window.speechSynthesis) {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(out);
+      u.lang = tLang;
+      speechSynthesis.speak(u);
     }
-
-    const data = await res.json();
-    const translated = (data.content?.[0]?.text || '').trim();
-
-    loader.remove();
-    const el = mkEntry(translated, ts, () => copyText(translated));
-    body.appendChild(el);
+  } catch (e) {
+    const errEl = mkEl('div', 'entry');
+    errEl.innerHTML = `<div class="et" style="color:var(--red);font-size:12px">⚠ ${esc(e.message)}</div>`;
+    loader.replaceWith(errEl);
     body.scrollTop = body.scrollHeight;
-    tgtCount++;
-    updateStats();
-    speak(translated, tgtLang);
-
-  } catch (err) {
-    loader.remove();
-    const errEl = document.createElement('div');
-    errEl.className = 'entry';
-    errEl.innerHTML = `<div class="entry-text" style="color:var(--red);font-size:13px;">⚠️ ${esc(err.message)}</div>`;
-    body.appendChild(errEl);
-    body.scrollTop = body.scrollHeight;
-    console.error('[translate]', err);
+    console.error('[translate]', e);
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────
-function mkEntry(text, ts, onCopy) {
-  const el = document.createElement('div');
-  el.className = 'entry';
-  el.innerHTML = `
-    <div class="entry-text">${esc(text)}</div>
-    <div class="entry-footer">
-      <span class="entry-time">${ts}</span>
-      <button class="entry-copy" title="복사">복사</button>
-    </div>`;
-  el.querySelector('.entry-copy').addEventListener('click', onCopy);
-  return el;
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function appendEntry(bodyId, text, ts) {
+  document.getElementById(bodyId).appendChild(makeEntryEl(text, ts));
+  document.getElementById(bodyId).scrollTop = 999999;
 }
 
-function removeEmpty(id) {
-  const el = document.getElementById(id);
-  if (el) el.remove();
+function makeEntryEl(text, ts) {
+  const el = mkEl('div', 'entry');
+  el.innerHTML = `
+    <div class="et">${esc(text)}</div>
+    <div class="em">
+      <span class="etime">${ts}</span>
+      <button class="ecopy">복사</button>
+    </div>`;
+  el.querySelector('.ecopy').onclick = () =>
+    navigator.clipboard.writeText(text).catch(() => {});
+  return el;
 }
 
 function clearAll() {
   document.getElementById('srcBody').innerHTML =
-    '<div class="empty" id="srcEmpty"><div class="empty-icon">🎙️</div><div class="empty-text">통역 시작을 누르고<br>말씀하세요</div></div>';
+    '<div class="empty" id="srcEmpty"><div class="ei">🎙️</div><div class="em2">통역 시작을 누르고<br>말씀하세요</div></div>';
   document.getElementById('tgtBody').innerHTML =
-    '<div class="empty" id="tgtEmpty"><div class="empty-icon">🌐</div><div class="empty-text">번역된 내용이<br>여기에 표시됩니다</div></div>';
+    '<div class="empty" id="tgtEmpty"><div class="ei">🌐</div><div class="em2">번역된 내용이<br>여기에 표시됩니다</div></div>';
   interimEl = null;
-  srcCount = tgtCount = 0;
-  updateStats();
+  nSrc = nTgt = 0;
+  refreshStats();
 }
 
-function copyAllTranslations() {
-  const texts = [...document.querySelectorAll('#tgtBody .entry-text')]
+function copyAll() {
+  const t = [...document.querySelectorAll('#tgtBody .et')]
     .map(e => e.textContent).join('\n\n');
-  if (!texts) { flash('복사할 내용이 없습니다', 'warn'); return; }
-  copyText(texts, '번역 내용 전체가 복사되었습니다');
+  if (t) navigator.clipboard.writeText(t).then(() => flash('복사 완료 ✓'));
 }
 
-function copyText(text, msg = '복사되었습니다') {
-  navigator.clipboard.writeText(text).then(() => flash(msg));
+function updateBtn() {
+  document.getElementById('goBtn').className = 'btn-go ' + (live ? 'live' : 'idle');
+  document.getElementById('goLbl').textContent = live ? '통역 중지' : '통역 시작';
 }
 
-function setStatus(msg, active) {
-  document.getElementById('sText').textContent = msg;
-  document.getElementById('sDot').className = 's-dot' + (active ? ' on' : '');
+function setStatus(msg, on = false) {
+  document.getElementById('smsg').textContent = msg;
+  document.getElementById('sdot').className = 'sdot' + (on ? ' on' : '');
 }
 
-function updateStats() {
-  document.getElementById('sStats').textContent =
-    srcCount > 0 ? `발화 ${srcCount} · 번역 ${tgtCount}` : '';
+function flash(msg) {
+  const el = document.getElementById('smsg');
+  const prev = el.textContent;
+  const wasOn = document.getElementById('sdot').classList.contains('on');
+  setStatus(msg);
+  setTimeout(() => setStatus(prev, wasOn), 2500);
 }
 
+function refreshStats() {
+  document.getElementById('sstat').textContent =
+    nSrc > 0 ? `발화 ${nSrc} · 번역 ${nTgt}` : '';
+}
+
+const WH = [3, 7, 12, 18, 12, 7, 3];
+function startWave() {
+  stopWave();
+  const bars = document.querySelectorAll('.wb');
+  waveTimer = setInterval(() => {
+    bars.forEach((b, i) => {
+      b.style.height = (WH[i] * (.5 + Math.random() * .5)) + 'px';
+      b.style.opacity = '1';
+    });
+  }, 110);
+}
+function stopWave() {
+  if (waveTimer) { clearInterval(waveTimer); waveTimer = null; }
+  document.querySelectorAll('.wb').forEach(b => { b.style.height = '3px'; b.style.opacity = '.3'; });
+}
+
+function killEmpty(id) { const el = document.getElementById(id); if (el) el.remove(); }
+function mkEl(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
 function nowStr() {
-  return new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  return new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
-
-function esc(t) {
-  return String(t)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-function flash(msg, type = 'ok') {
-  const prev = document.getElementById('sText').textContent;
-  const prevActive = document.getElementById('sDot').classList.contains('on');
-  setStatus((type === 'warn' ? '⚠ ' : '✓ ') + msg, false);
-  setTimeout(() => {
-    if (!running) setStatus(prev, prevActive);
-    else setStatus('🎙 음성 인식 중…', true);
-  }, 2500);
-}
+function lsGet(k)    { return localStorage.getItem('rta_' + k); }
+function lsSet(k, v) { localStorage.setItem('rta_' + k, v); }
 </script>
 </body>
 </html>
