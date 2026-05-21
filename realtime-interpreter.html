@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>실시간 동시통역</title>
+<style>
+:root {
+  --bg:      #0f1117;
+  --panel:   #161b27;
+  --card:    #1e2436;
+  --border:  #2a3045;
+  --accent:  #5b73ff;
+  --a-glow:  rgba(91,115,255,.25);
+  --text:    #e2e8f8;
+  --dim:     #6b7a9e;
+  --muted:   #3d4766;
+  --green:   #34d399;
+  --red:     #f87171;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+/* ── Layout ── */
+.app    { height: 100vh; display: flex; flex-direction: column; }
+header  { height: 52px; background: var(--panel); border-bottom: 1px solid var(--border);
+          display: flex; align-items: center; gap: 14px; padding: 0 18px; flex-shrink: 0; }
+.toolbar{ background: var(--panel); border-bottom: 1px solid var(--border);
+          display: flex; align-items: center; gap: 10px; padding: 8px 18px; flex-shrink: 0; flex-wrap: wrap; }
+.panels { flex: 1; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.panel  { display: flex; flex-direction: column; overflow: hidden;
+          border-right: 1px solid var(--border); }
+.panel:last-child { border-right: none; }
+.statusbar { height: 32px; background: var(--panel); border-top: 1px solid var(--border);
+             display: flex; align-items: center; gap: 8px; padding: 0 18px; flex-shrink: 0; }
+
+/* ── Header ── */
+.brand { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.brand-ico { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+             background: linear-gradient(135deg, #5b73ff, #a855f7); font-size: 15px; }
+.api-row { flex: 1; display: flex; align-items: center; gap: 6px; max-width: 400px; margin-left: auto; }
+input.api { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 7px;
+            padding: 5px 10px; color: var(--text); font-size: 12px; outline: none; min-width: 0; }
+input.api:focus { border-color: var(--accent); }
+input.api::placeholder { color: var(--muted); }
+.btn-save { background: var(--accent); color: #fff; border: none; border-radius: 7px;
+            padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-save:hover { opacity: .88; }
+select.mdl { background: var(--card); border: 1px solid var(--border); border-radius: 7px;
+             padding: 5px 8px; color: var(--text); font-size: 12px; cursor: pointer; outline: none; }
+
+/* ── Toolbar ── */
+.lang-row { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+select.lng { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 7px;
+             padding: 6px 8px; color: var(--text); font-size: 13px; cursor: pointer; outline: none; min-width: 0; }
+select.lng:focus { border-color: var(--accent); }
+.btn-swap { width: 30px; height: 30px; background: var(--card); border: 1px solid var(--border);
+            border-radius: 50%; color: var(--dim); font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            transition: all .15s; }
+.btn-swap:hover { border-color: var(--accent); color: var(--accent); }
+.sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+.tts-lbl { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim);
+           cursor: pointer; white-space: nowrap; user-select: none; }
+.sw { width: 30px; height: 16px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; position: relative; transition: all .2s; }
+.sw.on { background: var(--accent); border-color: var(--accent); }
+.sw::after { content: ''; position: absolute; width: 10px; height: 10px; background: #fff;
+             border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
+.sw.on::after { left: 16px; }
+.btn-clr { background: none; border: 1px solid var(--border); border-radius: 7px;
+           padding: 5px 10px; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.btn-clr:hover { border-color: var(--red); color: var(--red); }
+.btn-go { display: flex; align-items: center; gap: 6px; padding: 7px 16px; border: none;
+          border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+          flex-shrink: 0; transition: all .2s; }
+.btn-go.idle { background: linear-gradient(135deg,#5b73ff,#a855f7); color: #fff;
+               box-shadow: 0 0 14px var(--a-glow); }
+.btn-go.idle:hover { transform: translateY(-1px); box-shadow: 0 0 22px var(--a-glow); }
+.btn-go.live { background: var(--red); color: #fff; animation: pulse-btn 2s infinite; }
+@keyframes pulse-btn { 0%,100%{ box-shadow:0 0 10px rgba(248,113,113,.3); } 50%{ box-shadow:0 0 20px rgba(248,113,113,.5); } }
+.rdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.btn-go.live .rdot { animation: blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── Panel ── */
+.ph { padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--panel);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.pt { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+.pa { display: flex; align-items: center; gap: 7px; }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: var(--card);
+        color: var(--dim); border: 1px solid var(--border); }
+.wv { display: flex; align-items: center; gap: 2px; height: 14px; }
+.wb { width: 2px; height: 3px; background: var(--accent); border-radius: 1px; opacity: .35; }
+.btn-ca { font-size: 11px; padding: 2px 8px; background: none; border: 1px solid var(--border);
+          border-radius: 6px; color: var(--dim); cursor: pointer; }
+.btn-ca:hover { border-color: var(--accent); color: var(--accent); }
+.pb { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+.pb::-webkit-scrollbar { width: 3px; }
+.pb::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Entries ── */
+.entry { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+         padding: 9px 11px; animation: fadeUp .2s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+.et { font-size: 15px; line-height: 1.7; word-break: break-word; }
+.et.interim { color: var(--dim); font-style: italic; }
+.em { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.etime { font-size: 10px; color: var(--muted); }
+.ecopy { font-size: 10px; background: none; border: none; color: var(--muted); cursor: pointer;
+         padding: 1px 5px; border-radius: 3px; }
+.ecopy:hover { background: var(--panel); color: var(--dim); }
+
+/* Loading dots */
+.ldots { display: flex; align-items: center; gap: 6px; padding: 8px 11px; color: var(--dim); font-size: 12px; }
+.ld { display: flex; gap: 3px; }
+.ld span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: dp 1.2s infinite; }
+.ld span:nth-child(2){animation-delay:.15s} .ld span:nth-child(3){animation-delay:.3s}
+@keyframes dp { 0%,80%,100%{transform:scale(.5);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+/* Empty */
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+         gap: 8px; color: var(--muted); }
+.ei { font-size: 30px; opacity: .3; }
+.em2 { font-size: 12px; text-align: center; line-height: 1.6; }
+
+/* Statusbar */
+.sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.sdot.on { background: var(--green); animation: pdot 1.5s infinite; }
+@keyframes pdot { 0%,100%{opacity:1} 50%{opacity:.3} }
+.smsg { font-size: 11px; color: var(--dim); }
+.sstat { margin-left: auto; font-size: 10px; color: var(--muted); }
+
+/* Responsive */
+@media(max-width:680px){
+  html,body{overflow:auto}
+  .app{height:auto}
+  .panels{grid-template-columns:1fr;overflow:visible}
+  .panel{min-height:220px;border-right:none;border-bottom:1px solid var(--border)}
+  .api-row{max-width:100%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── Header ── -->
+<header>
+  <div class="brand">
+    <div class="brand-ico">🌐</div>
+    실시간 동시통역
+  </div>
+  <div class="api-row">
+    <input type="password" class="api" id="apiInput" placeholder="Anthropic API Key  (sk-ant-…)">
+    <button class="btn-save" onclick="saveKey()">저장</button>
+    <select class="mdl" id="mdlSel" onchange="savePref()">
+      <option value="claude-haiku-4-5-20251001">⚡ Haiku</option>
+      <option value="claude-sonnet-4-6">✨ Sonnet</option>
+    </select>
+  </div>
+</header>
+
+<!-- ── Toolbar ── -->
+<div class="toolbar">
+  <div class="lang-row">
+    <select class="lng" id="srcSel" onchange="onLang()"></select>
+    <button class="btn-swap" onclick="swapLang()" title="교체">⇄</button>
+    <select class="lng" id="tgtSel" onchange="onLang()"></select>
+  </div>
+  <div class="sep"></div>
+  <label class="tts-lbl" onclick="toggleTTS()">
+    <div class="sw" id="ttsSw"></div>🔊 음성
+  </label>
+  <button class="btn-clr" onclick="clearAll()">🗑 지우기</button>
+  <button class="btn-go idle" id="goBtn" onclick="toggle()">
+    <div class="rdot"></div>
+    <span id="goLbl">통역 시작</span>
+  </button>
+</div>
+
+<!-- ── Panels ── -->
+<div class="panels">
+  <div class="panel">
+    <div class="ph">
+      <span class="pt">원본 음성</span>
+      <div class="pa">
+        <div class="wv" id="wv">
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+        </div>
+        <span class="chip" id="srcChip"></span>
+      </div>
+    </div>
+    <div class="pb" id="srcBody">
+      <div class="empty" id="srcEmpty">
+        <div class="ei">🎙️</div>
+        <div class="em2">통역 시작을 누르고<br>말씀하세요</div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph">
+      <span class="pt">번역 결과</span>
+      <div class="pa">
+        <button class="btn-ca" onclick="copyAll()">전체 복사</button>
+        <span class="chip" id="tgtChip"></span>
+      </div>
+    </div>
+    <div class="pb" id="tgtBody">
+      <div class="empty" id="tgtEmpty">
+        <div class="ei">🌐</div>
+        <div class="em2">번역된 내용이<br>여기에 표시됩니다</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Statusbar ── -->
+<div class="statusbar">
+  <div class="sdot" id="sdot"></div>
+  <span class="smsg" id="smsg">API 키를 입력 후 통역을 시작하세요</span>
+  <span class="sstat" id="sstat"></span>
+</div>
+
+</div><!-- .app -->
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════ */
+const LANGS = [
+  ['ko-KR','한국어'],['en-US','English (US)'],['en-GB','English (UK)'],
+  ['ja-JP','日本語'],['zh-CN','中文 (简体)'],['zh-TW','中文 (繁體)'],
+  ['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],
+  ['pt-BR','Português (BR)'],['ru-RU','Русский'],['ar-SA','العربية'],
+  ['vi-VN','Tiếng Việt'],['th-TH','ภาษาไทย'],['id-ID','Bahasa Indonesia'],
+];
+const LMAP = Object.fromEntries(LANGS);
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let apiKey = '';
+let live    = false;    // session running?
+let ttsOn   = false;
+
+let micStream  = null;  // kept alive to suppress repeated mic-access notifications
+let audioCtx   = null;
+let recog      = null;
+let rtTimer    = null;  // restart timer
+let interimEl  = null;
+
+let nSrc = 0, nTgt = 0;
+let waveTimer = null;
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+(function boot() {
+  // Build language dropdowns
+  ['srcSel','tgtSel'].forEach(id => {
+    const sel = document.getElementById(id);
+    LANGS.forEach(([v,t]) => sel.add(new Option(t, v)));
+  });
+
+  // Restore preferences
+  apiKey = lsGet('key') || '';
+  ttsOn  = lsGet('tts') === '1';
+  document.getElementById('apiInput').value   = apiKey || '';
+  document.getElementById('ttsSw').classList.toggle('on', ttsOn);
+  document.getElementById('srcSel').value     = lsGet('src') || 'ko-KR';
+  document.getElementById('tgtSel').value     = lsGet('tgt') || 'en-US';
+  document.getElementById('mdlSel').value     = lsGet('mdl') || 'claude-haiku-4-5-20251001';
+
+  refreshChips();
+})();
+
+/* ═══════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════ */
+function saveKey() {
+  const v = document.getElementById('apiInput').value.trim();
+  if (!v) { flash('API 키를 입력하세요'); return; }
+  apiKey = v;
+  lsSet('key', v);
+  flash('저장 완료 ✓');
+}
+
+function savePref() {
+  lsSet('src', document.getElementById('srcSel').value);
+  lsSet('tgt', document.getElementById('tgtSel').value);
+  lsSet('mdl', document.getElementById('mdlSel').value);
+}
+
+function onLang() {
+  refreshChips();
+  savePref();
+  if (live) { stopSession(); setTimeout(startSession, 300); }
+}
+
+function swapLang() {
+  const s = document.getElementById('srcSel');
+  const t = document.getElementById('tgtSel');
+  [s.value, t.value] = [t.value, s.value];
+  onLang();
+}
+
+function refreshChips() {
+  document.getElementById('srcChip').textContent = LMAP[document.getElementById('srcSel').value] || '';
+  document.getElementById('tgtChip').textContent = LMAP[document.getElementById('tgtSel').value] || '';
+}
+
+function toggleTTS() {
+  ttsOn = !ttsOn;
+  document.getElementById('ttsSw').classList.toggle('on', ttsOn);
+  lsSet('tts', ttsOn ? '1' : '0');
+}
+
+/* ═══════════════════════════════════════
+   SESSION  (start / stop)
+═══════════════════════════════════════ */
+function toggle() { live ? stopSession() : startSession(); }
+
+async function startSession() {
+  if (!apiKey) { alert('Anthropic API 키를 먼저 입력하고 저장하세요.'); return; }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Chrome 또는 Edge 브라우저에서만 지원됩니다.'); return; }
+
+  // ── AudioContext keep-alive ──────────────────────────────
+  // getUserMedia로 마이크 스트림을 먼저 획득해 AudioContext에 연결.
+  // 이 스트림이 살아있는 동안 SpeechRecognition이 재시작돼도
+  // Chrome은 마이크가 이미 사용 중임을 알기 때문에
+  // "마이크 액세스 허용됨" 알림을 반복하지 않는다.
+  if (!micStream) {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+      const src  = audioCtx.createMediaStreamSource(micStream);
+      const gain = audioCtx.createGain();
+      gain.gain.value = 0;          // 무음 — 피드백 방지
+      src.connect(gain);            // destination에는 연결 안 함
+    } catch (e) {
+      // getUserMedia 실패(권한 거부 등) → 그냥 계속 진행
+      // SpeechRecognition 자체 권한 처리로 fallback됨
+      micStream = null;
+      console.warn('keep-alive 스트림 실패:', e.message);
+    }
+  }
+
+  live = true;
+  updateBtn();
+  setStatus('🎙 음성 인식 중…', true);
+  startWave();
+  spawnRecog(SR);
+}
+
+function stopSession() {
+  live = false;
+  clearTimeout(rtTimer);
+
+  if (recog)      { try { recog.stop(); } catch(_){} recog = null; }
+  if (micStream)  { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (audioCtx)   { try { audioCtx.close(); } catch(_){} audioCtx = null; }
+
+  updateBtn();
+  setStatus('대기 중');
+  stopWave();
+  removeInterim();
+}
+
+/* ═══════════════════════════════════════
+   SPEECH RECOGNITION
+═══════════════════════════════════════ */
+function spawnRecog(SR) {
+  if (!live) return;
+
+  const r      = new SR();
+  r.lang       = document.getElementById('srcSel').value;
+  r.continuous = true;
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+  recog = r;
+
+  r.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final   += e.results[i][0].transcript;
+      else                      interim += e.results[i][0].transcript;
+    }
+    if (interim) showInterim(interim);
+    if (final)   commitFinal(final);
+  };
+
+  r.onerror = e => {
+    if (e.error === 'not-allowed') {
+      stopSession();
+      alert('마이크 접근이 거부됐습니다.\n주소창의 🔒 → 마이크 허용 후 다시 시도하세요.');
+    }
+    // 'no-speech' / 'aborted' 등은 onend에서 자동 재시작
+  };
+
+  r.onend = () => {
+    if (!live) return;
+    clearTimeout(rtTimer);
+    rtTimer = setTimeout(() => spawnRecog(SR), 150);
+  };
+
+  try { r.start(); } catch (e) {
+    setStatus('시작 실패: ' + e.message);
+    live = false;
+    updateBtn();
+    stopWave();
+  }
+}
+
+/* ═══════════════════════════════════════
+   TRANSCRIPT DISPLAY
+═══════════════════════════════════════ */
+function showInterim(text) {
+  killEmpty('srcEmpty');
+  const body = document.getElementById('srcBody');
+  if (!interimEl) {
+    interimEl = mkEl('div', 'entry');
+    interimEl.innerHTML = '<div class="et interim" id="itxt"></div>';
+    body.appendChild(interimEl);
+  }
+  document.getElementById('itxt').textContent = text;
+  body.scrollTop = body.scrollHeight;
+}
+
+function removeInterim() {
+  if (interimEl) { interimEl.remove(); interimEl = null; }
+}
+
+function commitFinal(text) {
+  removeInterim();
+  killEmpty('srcEmpty');
+  const ts = nowStr();
+  appendEntry('srcBody', text, ts);
+  nSrc++;
+  refreshStats();
+  doTranslate(text, ts);
+}
+
+/* ═══════════════════════════════════════
+   TRANSLATION  (Claude API)
+═══════════════════════════════════════ */
+async function doTranslate(text, ts) {
+  const tLang  = document.getElementById('tgtSel').value;
+  const tName  = LMAP[tLang] || tLang;
+  const model  = document.getElementById('mdlSel').value;
+  const body   = document.getElementById('tgtBody');
+
+  killEmpty('tgtEmpty');
+
+  // placeholder while waiting
+  const loader = mkEl('div', 'ldots');
+  loader.innerHTML = '<div class="ld"><span></span><span></span><span></span></div> 번역 중…';
+  body.appendChild(loader);
+  body.scrollTop = body.scrollHeight;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method : 'POST',
+      headers: {
+        'Content-Type'  : 'application/json',
+        'x-api-key'     : apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-client-side-api-key-access': 'true',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1024,
+        system: `You are a professional simultaneous interpreter. Translate into ${tName}. Return ONLY the translated text — no explanation, no quotes.`,
+        messages: [{ role: 'user', content: text }],
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error?.message || res.statusText);
+
+    const out = (json.content?.[0]?.text || '').trim();
+    loader.replaceWith(makeEntryEl(out, ts));
+    body.scrollTop = body.scrollHeight;
+    nTgt++;
+    refreshStats();
+
+    if (ttsOn && window.speechSynthesis) {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(out);
+      u.lang = tLang;
+      speechSynthesis.speak(u);
+    }
+  } catch (e) {
+    const errEl = mkEl('div', 'entry');
+    errEl.innerHTML = `<div class="et" style="color:var(--red);font-size:12px">⚠ ${esc(e.message)}</div>`;
+    loader.replaceWith(errEl);
+    body.scrollTop = body.scrollHeight;
+    console.error('[translate]', e);
+  }
+}
+
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function appendEntry(bodyId, text, ts) {
+  document.getElementById(bodyId).appendChild(makeEntryEl(text, ts));
+  document.getElementById(bodyId).scrollTop = 999999;
+}
+
+function makeEntryEl(text, ts) {
+  const el = mkEl('div', 'entry');
+  el.innerHTML = `
+    <div class="et">${esc(text)}</div>
+    <div class="em">
+      <span class="etime">${ts}</span>
+      <button class="ecopy">복사</button>
+    </div>`;
+  el.querySelector('.ecopy').onclick = () =>
+    navigator.clipboard.writeText(text).catch(() => {});
+  return el;
+}
+
+function clearAll() {
+  document.getElementById('srcBody').innerHTML =
+    '<div class="empty" id="srcEmpty"><div class="ei">🎙️</div><div class="em2">통역 시작을 누르고<br>말씀하세요</div></div>';
+  document.getElementById('tgtBody').innerHTML =
+    '<div class="empty" id="tgtEmpty"><div class="ei">🌐</div><div class="em2">번역된 내용이<br>여기에 표시됩니다</div></div>';
+  interimEl = null;
+  nSrc = nTgt = 0;
+  refreshStats();
+}
+
+function copyAll() {
+  const t = [...document.querySelectorAll('#tgtBody .et')]
+    .map(e => e.textContent).join('\n\n');
+  if (t) navigator.clipboard.writeText(t).then(() => flash('복사 완료 ✓'));
+}
+
+function updateBtn() {
+  document.getElementById('goBtn').className = 'btn-go ' + (live ? 'live' : 'idle');
+  document.getElementById('goLbl').textContent = live ? '통역 중지' : '통역 시작';
+}
+
+function setStatus(msg, on = false) {
+  document.getElementById('smsg').textContent = msg;
+  document.getElementById('sdot').className = 'sdot' + (on ? ' on' : '');
+}
+
+function flash(msg) {
+  const el = document.getElementById('smsg');
+  const prev = el.textContent;
+  const wasOn = document.getElementById('sdot').classList.contains('on');
+  setStatus(msg);
+  setTimeout(() => setStatus(prev, wasOn), 2500);
+}
+
+function refreshStats() {
+  document.getElementById('sstat').textContent =
+    nSrc > 0 ? `발화 ${nSrc} · 번역 ${nTgt}` : '';
+}
+
+const WH = [3, 7, 12, 18, 12, 7, 3];
+function startWave() {
+  stopWave();
+  const bars = document.querySelectorAll('.wb');
+  waveTimer = setInterval(() => {
+    bars.forEach((b, i) => {
+      b.style.height = (WH[i] * (.5 + Math.random() * .5)) + 'px';
+      b.style.opacity = '1';
+    });
+  }, 110);
+}
+function stopWave() {
+  if (waveTimer) { clearInterval(waveTimer); waveTimer = null; }
+  document.querySelectorAll('.wb').forEach(b => { b.style.height = '3px'; b.style.opacity = '.3'; });
+}
+
+function killEmpty(id) { const el = document.getElementById(id); if (el) el.remove(); }
+function mkEl(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function nowStr() {
+  return new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function lsGet(k)    { return localStorage.getItem('rta_' + k); }
+function lsSet(k, v) { localStorage.setItem('rta_' + k, v); }
+</script>
+</body>
+</html>
