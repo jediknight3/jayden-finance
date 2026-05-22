@@ -6441,7 +6441,7 @@ function renderInvSummary(){
           <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.prin)}</td>
           <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.depCum)}</td>
           <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.wdCum)}</td>
-          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtMo(a.month)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtPeriod(a.month)}</td>
         </tr>`;
       }).join('');
       return hdr + acctRows;
