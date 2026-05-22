@@ -725,9 +725,15 @@ body {
     <!-- 요약 -->
     <div id="inv-sub-summary">
       <div class="section">
+        <!-- 소유자 필터 -->
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button onclick="setInvOwnerFilter('all')" id="inv-owner-all" style="flex:1;border:none;padding:7px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">전체</button>
+          <button onclick="setInvOwnerFilter('self')" id="inv-owner-self" style="flex:1;border:none;padding:7px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">본인</button>
+          <button onclick="setInvOwnerFilter('spouse')" id="inv-owner-spouse" style="flex:1;border:none;padding:7px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">일이</button>
+        </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-header-title">총 투자자산</div>
+            <div class="card-header-title" id="at-inv-header-title">총 투자자산</div>
             <div class="card-header-value pos" id="at-inv-total">—</div>
           </div>
           <div class="summary-grid">
@@ -2512,6 +2518,28 @@ let GAS_URL = '';
 const BUILD_DATE = '2026-05-10 20:51 KST';
 let ANTHROPIC_KEY = '';
 let ACCT_ALIASES = {}; // { originalName: displayAlias }
+let ACCT_TYPES = {}; // { originalAcctName: 'general'|'isa'|'pension'|'retirement' }
+function saveAcctTypes(){ try{ localStorage.setItem('jf_acct_types', JSON.stringify(ACCT_TYPES)); }catch(e){} }
+function loadAcctTypes(){ try{ const s=localStorage.getItem('jf_acct_types'); if(s) ACCT_TYPES=JSON.parse(s); }catch(e){} }
+function getAcctType(acct){
+  if(ACCT_TYPES[acct]) return ACCT_TYPES[acct];
+  const n=String(acct);
+  if(n.includes('퇴직연금')) return 'retirement';
+  if(n.includes('연금저축')||n.includes('IRP')) return 'pension';
+  if(n.includes('ISA')) return 'isa';
+  return 'general';
+}
+let ACCT_OWNERS = {}; // { originalAcctName: 'self'|'spouse'|'child' }
+function saveAcctOwners(){ try{ localStorage.setItem('jf_acct_owners', JSON.stringify(ACCT_OWNERS)); }catch(e){} }
+function loadAcctOwners(){ try{ const s=localStorage.getItem('jf_acct_owners'); if(s) ACCT_OWNERS=JSON.parse(s); }catch(e){} }
+function getAcctOwner(acct){
+  if(ACCT_OWNERS[acct]) return ACCT_OWNERS[acct];
+  const n=String(acct);
+  if(n.includes('(일이)')||n.includes('일이)')) return 'spouse';
+  if(n.includes('(수빈)')||n.includes('(유빈)')) return 'child';
+  return 'self';
+}
+let _invOwnerFilter = 'all'; // 'all'|'self'|'spouse'|'child'
 
 function saveCache(){ try{ localStorage.setItem('jf_db', JSON.stringify(DB)); }catch(e){} }
 function loadCache(){
@@ -4498,17 +4526,38 @@ function renderAcctAliasEditor(){
     ? Array.from(sel.options).filter(o=>o.value).map(o=>o.value)
     : [...new Set(DB.invest.map(r=>r.acct))].sort();
   if(!accts.length){ wrap.innerHTML='<div style="color:var(--sub)">계좌 없음</div>'; return; }
+  const typeOpts = [
+    {v:'general',l:'일반계좌'},
+    {v:'isa',l:'ISA'},
+    {v:'pension',l:'연금계좌'},
+    {v:'retirement',l:'퇴직연금'},
+  ];
+  const ownerOpts = [
+    {v:'self',l:'본인'},
+    {v:'spouse',l:'일이(배우자)'},
+    {v:'child',l:'자녀'},
+  ];
   wrap.innerHTML = accts.map(acct=>`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <span style="font-size:11px;color:var(--sub);min-width:100px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${acct}">${acct}</span>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--sub);min-width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${acct}">${acct}</span>
       <span style="color:var(--gray-300);font-size:10px">→</span>
       <input type="text" value="${(ACCT_ALIASES[acct]||'').replace(/"/g,'&quot;')}" placeholder="${acct.replace(/"/g,'&quot;')}"
         data-orig="${acct.replace(/"/g,'&quot;')}"
-        style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--gray-200);border-radius:7px;font-size:11px;background:var(--card);color:var(--text)"
+        style="flex:1;min-width:80px;padding:5px 8px;border:1px solid var(--gray-200);border-radius:7px;font-size:11px;background:var(--card);color:var(--text)"
         oninput="if(this.value.trim()) ACCT_ALIASES[this.dataset.orig]=this.value.trim(); else delete ACCT_ALIASES[this.dataset.orig]">
+      <select data-orig="${acct.replace(/"/g,'&quot;')}"
+        style="padding:5px 6px;border:1px solid var(--gray-200);border-radius:7px;font-size:11px;background:var(--card);color:var(--text);flex-shrink:0"
+        onchange="ACCT_TYPES[this.dataset.orig]=this.value">
+        ${typeOpts.map(t=>`<option value="${t.v}" ${getAcctType(acct)===t.v?'selected':''}>${t.l}</option>`).join('')}
+      </select>
+      <select data-orig="${acct.replace(/"/g,'&quot;')}"
+        style="padding:5px 6px;border:1px solid var(--gray-200);border-radius:7px;font-size:11px;background:var(--card);color:var(--text);flex-shrink:0"
+        onchange="ACCT_OWNERS[this.dataset.orig]=this.value">
+        ${ownerOpts.map(o=>`<option value="${o.v}" ${getAcctOwner(acct)===o.v?'selected':''}>${o.l}</option>`).join('')}
+      </select>
     </div>
   `).join('')+
-  `<button onclick="saveAcctAliases();applyAcctAliasesToDropdown();renderAll();showToast('✅ 계좌 표시명 저장 완료','success')"
+  `<button onclick="saveAcctAliases();saveAcctTypes();saveAcctOwners();applyAcctAliasesToDropdown();renderAll();showToast('✅ 계좌 설정 저장 완료','success')"
     style="width:100%;padding:8px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px">
     💾 저장
   </button>`;
@@ -6077,6 +6126,8 @@ async function init(){
   loadGasUrlLocal();
   loadAnthropicKeyLocal();
   loadAcctAliases();
+  loadAcctTypes();
+  loadAcctOwners();
   loadCache();
 
   // 캐시 없으면 초기 투자 데이터 로드
@@ -6301,17 +6352,30 @@ function renderInvSub(){
 }
 
 // 요약 탭
+function setInvOwnerFilter(f){
+  _invOwnerFilter=f;
+  ['all','self','spouse'].forEach(k=>{
+    const b=document.getElementById('inv-owner-'+k);
+    if(b){ b.style.background=k===f?'var(--primary)':'var(--gray-100)'; b.style.color=k===f?'#fff':'var(--gray-600)'; }
+  });
+  renderInvSummary();
+}
 function renderInvSummary(){
-  const all = getAllInvLatest();
-  const t = getInvTotals();
-  const depCum = DB.invest.length ? Math.max(...[...new Set(DB.invest.map(r=>r.acct))].map(acct=>{
-    const rows=DB.invest.filter(r=>r.acct===acct&&r.curr!=null).sort((a,b)=>a.month.localeCompare(b.month));
-    return rows.length ? rows[rows.length-1].depCum||0 : 0;
-  }).filter(v=>v>0)) : 0;
-  const totalDepCum = [...new Set(DB.invest.map(r=>r.acct))].reduce((s,acct)=>{
+  // apply owner filter
+  const ownerLabel={all:'총 투자자산',self:'본인 투자자산',spouse:'일이 투자자산'};
+  const hdrEl=document.getElementById('at-inv-header-title');
+  if(hdrEl) hdrEl.textContent=ownerLabel[_invOwnerFilter]||'총 투자자산';
+  const allRaw = getAllInvLatest();
+  const all = _invOwnerFilter==='all' ? allRaw : allRaw.filter(a=>getAcctOwner(a.acct)===_invOwnerFilter);
+  const filteredAccts=new Set(all.map(a=>a.acct));
+  const totalDepCum = [...filteredAccts].reduce((s,acct)=>{
     const rows=DB.invest.filter(r=>r.acct===acct&&r.curr!=null).sort((a,b)=>a.month.localeCompare(b.month));
     return s+(rows.length?rows[rows.length-1].depCum||0:0);
   },0);
+  const tCurr=all.reduce((s,a)=>s+a.curr,0);
+  const tPrin=all.reduce((s,a)=>s+a.prin,0);
+  const tPnl=tCurr-tPrin;
+  const tRate=tPrin?tPnl/tPrin:0;
 
   const el_total = document.getElementById('at-inv-total');
   const el_dep = document.getElementById('at-inv-dep');
@@ -6321,18 +6385,19 @@ function renderInvSummary(){
   const el_rate = document.getElementById('at-inv-rate');
   const el_prog = document.getElementById('at-inv-prog');
 
-  if(el_total) el_total.textContent = fmtM(t.curr);
+  if(el_total) el_total.textContent = fmtM(tCurr);
   if(el_dep)   el_dep.textContent   = fmtN(totalDepCum);
-  if(el_prin)  el_prin.textContent  = fmtN(t.prin);
-  if(el_curr2) el_curr2.textContent = fmtN(t.curr);
-  if(el_pnl){  el_pnl.textContent  = (t.pnl>=0?'+':'')+fmtN(t.pnl); el_pnl.className='summary-value '+(t.pnl>=0?'pos':'neg'); }
+  if(el_prin)  el_prin.textContent  = fmtN(tPrin);
+  if(el_curr2) el_curr2.textContent = fmtN(tCurr);
+  if(el_pnl){  el_pnl.textContent  = (tPnl>=0?'+':'')+fmtN(tPnl); el_pnl.className='summary-value '+(tPnl>=0?'pos':'neg'); }
+  const t={curr:tCurr,prin:tPrin,pnl:tPnl,rate:tRate};
   if(el_rate){ el_rate.textContent = fmtP(t.rate); el_rate.style.color=t.rate>=0?'var(--green)':'var(--red)'; }
   if(el_prog)  el_prog.style.width = Math.min(Math.abs(t.rate)*100,100)+'%';
 
   // 수익률 바 차트
   renderInvBars('invBarsChart', all);
 
-  // 계좌 목록 테이블 (2줄 레이아웃)
+  // 계좌 목록 테이블 (2줄 레이아웃, 계좌 종류별 그룹)
   const totalWdCum = all.reduce((s,a)=>s+a.wdCum,0);
   const tb = document.getElementById('investListCard');
   if(tb){
@@ -6340,6 +6405,47 @@ function renderInvSummary(){
     tb.style.webkitOverflowScrolling='touch';
     const gc={'g-best':'#FFFDE7','g-good':'#E8F5E9','g-warn':'#FFF3E0','g-bad':'#FFEBEE','g-wat':'#ECEFF1'};
     const fc={'g-best':'#E65100','g-good':'#2E7D32','g-warn':'#E65100','g-bad':'#C62828','g-wat':'#546E7A'};
+    const TYPE_ORDER=['general','isa','pension','retirement'];
+    const TYPE_LABEL={general:'일반계좌',isa:'ISA',pension:'연금계좌',retirement:'퇴직연금'};
+    const TYPE_COLOR={general:'#37474F',isa:'#1565C0',pension:'#6A1B9A',retirement:'#E65100'};
+    const groups={};
+    TYPE_ORDER.forEach(t=>groups[t]=[]);
+    all.forEach(a=>{ const t=getAcctType(a.acct); groups[t]=groups[t]||[]; groups[t].push(a); });
+    let rowIdx=0;
+    const groupRows = TYPE_ORDER.filter(t=>groups[t].length).map(type=>{
+      const grpAccts = groups[type];
+      const grpCurr = grpAccts.reduce((s,a)=>s+a.curr,0);
+      const grpPrin = grpAccts.reduce((s,a)=>s+a.prin,0);
+      const grpPnl = grpCurr - grpPrin;
+      const grpRate = grpPrin ? grpPnl/grpPrin : 0;
+      const hdr = `<tr>
+        <td colspan="5" style="padding:6px 12px;background:${TYPE_COLOR[type]};color:#fff;font-size:11px;font-weight:700">
+          ${TYPE_LABEL[type]}
+          <span style="float:right;font-size:11px;font-weight:800">${fmtM(grpCurr)}</span>
+          <span style="float:right;font-size:10px;font-weight:500;margin-right:8px;opacity:.85">${grpRate>=0?'+':''}${(grpRate*100).toFixed(1)}% &nbsp;</span>
+        </td>
+      </tr>`;
+      const acctRows = grpAccts.map(a=>{
+        const g=getGrade(a.rate);
+        const bg=rowIdx++%2?'':'background:var(--gray-50)';
+        return `<tr style="${bg}">
+          <td rowspan="2" style="padding:7px 8px 7px 12px;vertical-align:middle;border-right:1px solid var(--gray-100)">
+            <div style="font-size:11px;font-weight:700;white-space:nowrap">${getAcctDisplay(a.acct)}</div>
+          </td>
+          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700">${fmtN(a.curr)}</td>
+          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${a.pnl>=0?'var(--green)':'var(--red)'}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</td>
+          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${a.rate>=0?'var(--green)':'var(--red)'}">${fmtP(a.rate)}</td>
+          <td style="padding:6px 8px 2px;text-align:center"><span style="display:inline-block;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:700;background:${gc[g.grade]};color:${fc[g.grade]}">${g.lbl}</span></td>
+        </tr>
+        <tr style="${bg}">
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.prin)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.depCum)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.wdCum)}</td>
+          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtMo(a.month)}</td>
+        </tr>`;
+      }).join('');
+      return hdr + acctRows;
+    }).join('');
     tb.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:420px">
       <thead>
         <tr style="background:#1A2B4A">
@@ -6356,26 +6462,7 @@ function renderInvSummary(){
           <th style="padding:2px 8px 6px;font-size:9px;font-weight:400;color:rgba(255,255,255,.55);text-align:center;white-space:nowrap">기준월</th>
         </tr>
       </thead>
-      <tbody>
-      ${all.map((a,i)=>{
-        const g=getGrade(a.rate);
-        const bg=i%2?'':'background:var(--gray-50)';
-        return `<tr style="${bg}">
-          <td rowspan="2" style="padding:7px 8px 7px 12px;vertical-align:middle;border-right:1px solid var(--gray-100)">
-            <div style="font-size:11px;font-weight:700;white-space:nowrap">${getAcctDisplay(a.acct)}</div>
-          </td>
-          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700">${fmtN(a.curr)}</td>
-          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${a.pnl>=0?'var(--green)':'var(--red)'}">${a.pnl>=0?'+':''}${fmtN(a.pnl)}</td>
-          <td style="padding:6px 8px 2px;font-size:11px;text-align:right;font-weight:700;color:${a.rate>=0?'var(--green)':'var(--red)'}">${fmtP(a.rate)}</td>
-          <td style="padding:6px 8px 2px;text-align:center"><span style="display:inline-block;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:700;background:${gc[g.grade]};color:${fc[g.grade]}">${g.lbl}</span></td>
-        </tr>
-        <tr style="${bg}">
-          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.prin)}</td>
-          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.depCum)}</td>
-          <td style="padding:2px 8px 6px;font-size:10px;text-align:right;color:var(--sub)">${fmtN(a.wdCum)}</td>
-          <td style="padding:2px 8px 6px;font-size:10px;text-align:center;color:var(--sub)">${fmtPeriod(a.month)}</td>
-        </tr>`;
-      }).join('')}
+      <tbody>${groupRows}
       <tr style="background:#1A2B4A;border-top:2px solid var(--yellow)">
         <td rowspan="2" style="padding:8px 8px 8px 12px;font-size:12px;font-weight:700;color:#fff;vertical-align:middle;border-right:1px solid rgba(255,255,255,.2)">합  계</td>
         <td style="padding:6px 8px 2px;text-align:right;font-size:12px;font-weight:700;color:var(--yellow)">${fmtN(t.curr)}</td>
