@@ -4617,12 +4617,14 @@ async function forceUploadInvInit(){
   }catch(e){ setLoading(false); showToast('실패: '+e.message,'error'); }
 }
 function clearCacheAndReload(){
-  if(!confirm('로컬 캐시를 완전히 삭제하고 구글 시트에서 새로 불러올까요?\n(저장된 URL은 유지됩니다)')) return;
-  const gasUrl = localStorage.getItem('jf_gas')||'';
+  if(!confirm('앱 캐시를 초기화하고 새로고침합니다.\nGAS URL, API 키, 계좌 설정은 유지됩니다.')) return;
+  const keep = ['jf_gas','jf_anthropic','jf_acct_aliases','jf_acct_types','jf_acct_owners'];
+  const saved = {};
+  keep.forEach(k=>{ const v=localStorage.getItem(k); if(v) saved[k]=v; });
   localStorage.clear();
-  if(gasUrl) localStorage.setItem('jf_gas', gasUrl);
+  Object.entries(saved).forEach(([k,v])=>localStorage.setItem(k,v));
   showToast('캐시 삭제 완료! 새로고침합니다...','success',1500);
-  setTimeout(()=>location.reload(), 1500);
+  setTimeout(()=>location.reload(true), 1500);
 }
 
 function exportAllCSV(){
