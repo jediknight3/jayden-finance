@@ -2667,13 +2667,20 @@ async function syncAll(){
     const sheets = ['invest','bank','debt','real','cf','goals','fixed','install'];
     for(const s of sheets){
       const r = await gasReq({sheet:s});
-      if(r.ok) DB[s]=r.data;
+      if(r.ok) DB[s]=deduplicateSheet(s, r.data);
     }
     normalizeInvestAccts(); saveCache(); renderAll();
     setLoading(false); showToast('✅ 동기화 완료!','success');
   }catch(e){
     setLoading(false); showToast('동기화 실패: '+e.message,'error');
   }
+}
+
+function deduplicateSheet(sheet, rows){
+  const seen=new Map();
+  // 뒤에 있는 레코드가 최신 → reverse 후 first-seen 유지 → 재정렬
+  [...rows].reverse().forEach(r=>{ const k=makeKey(sheet,r); if(k) seen.set(k,r); });
+  return rows.filter(r=>{ const k=makeKey(sheet,r); if(!k) return true; if(seen.get(k)===r) return true; seen.delete(k); return false; });
 }
 
 async function gasUpsert(sheet, rec){
@@ -6166,14 +6173,14 @@ async function init(){
             goals: ['targetAmount','currentAmount']
           };
           const fields = numFields[s] || [];
-          DB[s]=r.data
+          DB[s]=deduplicateSheet(s, r.data
             .filter(item=>item&&typeof item==='object'&&Object.keys(item).length>0)
             .map(item=>{
               if(!fields.length) return item;
               const converted={...item};
               fields.forEach(f=>{ if(f in converted) converted[f]=Number(converted[f])||0; });
               return converted;
-            });
+            }));
           updated=true;
         }
       }
