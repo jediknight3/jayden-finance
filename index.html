@@ -2235,6 +2235,11 @@ body {
 <!-- 토스트 -->
 <div id="toast"><span id="toast-icon"></span><span id="toast-msg"></span></div>
 
+<!-- 업데이트 배너 -->
+<div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#1565C0;color:#fff;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)" onclick="location.reload(true)">
+  🔄 새 버전이 있습니다 — 탭하여 업데이트
+</div>
+
 <!-- 로딩 -->
 <div class="loading-overlay" id="loading">
   <div class="spinner"></div>
@@ -6198,6 +6203,25 @@ async function init(){
   ['bank-balance','debt-balance','debt-monthly','real-buy','real-curr','cf-amount','inv-curr',
    'fixed-amount','tax-buy','tax-sell','tax-cost','inst-total','goal-target','goal-current']
     .forEach(id=>bindComma(id, id==='inv-curr'?calcInvPreview:null));
+
+  // 배포 버전 체크 (백그라운드)
+  checkForUpdate();
+}
+
+async function checkForUpdate(){
+  try{
+    const url = location.href.split('?')[0].split('#')[0];
+    const res = await fetch(url+'?_v='+Date.now(), {cache:'no-store'});
+    if(!res.ok) return;
+    const html = await res.text();
+    const m = html.match(/const BUILD_DATE\s*=\s*'([^']+)'/);
+    if(!m) return;
+    const serverDate = m[1];
+    if(serverDate !== BUILD_DATE){
+      const banner = document.getElementById('update-banner');
+      if(banner) banner.style.display='block';
+    }
+  }catch(e){}
 }
 
 init();
