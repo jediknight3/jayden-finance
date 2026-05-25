@@ -784,9 +784,11 @@ body {
         </div>
         <!-- 추이 차트 토글 -->
         <div class="chart-card">
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <button id="btnAsset" onclick="setTrendMode2('asset')" style="flex:1;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">📊 자산</button>
-            <button id="btnRate2" onclick="setTrendMode2('rate')" style="flex:1;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">📈 수익률</button>
+          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+            <button id="btnAsset" onclick="setTrendMode2('asset')" style="flex:1;min-width:60px;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">📊 자산</button>
+            <button id="btnRate2" onclick="setTrendMode2('rate')" style="flex:1;min-width:60px;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">📈 수익률</button>
+            <button id="btnDep" onclick="setTrendMode2('dep')" style="flex:1;min-width:60px;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">📥 입금</button>
+            <button id="btnWd" onclick="setTrendMode2('wd')" style="flex:1;min-width:60px;border:none;padding:7px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:var(--gray-100);color:var(--gray-600)">📤 출금</button>
           </div>
           <div id="invTrendChart"></div>
         </div>
@@ -2233,6 +2235,11 @@ body {
 <!-- 토스트 -->
 <div id="toast"><span id="toast-icon"></span><span id="toast-msg"></span></div>
 
+<!-- 업데이트 배너 -->
+<div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#1565C0;color:#fff;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)" onclick="location.reload(true)">
+  🔄 새 버전이 있습니다 — 탭하여 업데이트
+</div>
+
 <!-- 로딩 -->
 <div class="loading-overlay" id="loading">
   <div class="spinner"></div>
@@ -2515,7 +2522,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[], holdings:[] };
 let GAS_URL = '';
-const BUILD_DATE = '2026-05-10 20:51 KST';
+const BUILD_DATE = '2026-05-24 KST';
 let ANTHROPIC_KEY = '';
 let ACCT_ALIASES = {}; // { originalName: displayAlias }
 let ACCT_TYPES = {}; // { originalAcctName: 'general'|'isa'|'pension'|'retirement' }
@@ -6196,6 +6203,25 @@ async function init(){
   ['bank-balance','debt-balance','debt-monthly','real-buy','real-curr','cf-amount','inv-curr',
    'fixed-amount','tax-buy','tax-sell','tax-cost','inst-total','goal-target','goal-current']
     .forEach(id=>bindComma(id, id==='inv-curr'?calcInvPreview:null));
+
+  // 배포 버전 체크 (백그라운드)
+  checkForUpdate();
+}
+
+async function checkForUpdate(){
+  try{
+    const url = location.href.split('?')[0].split('#')[0];
+    const res = await fetch(url+'?_v='+Date.now(), {cache:'no-store'});
+    if(!res.ok) return;
+    const html = await res.text();
+    const m = html.match(/const BUILD_DATE\s*=\s*'([^']+)'/);
+    if(!m) return;
+    const serverDate = m[1];
+    if(serverDate !== BUILD_DATE){
+      const banner = document.getElementById('update-banner');
+      if(banner) banner.style.display='block';
+    }
+  }catch(e){}
 }
 
 init();
@@ -6289,7 +6315,16 @@ function getMonthlyTotals2(){
       });
     }
     const wdMonth = Math.max(0, totalWdCum - prevWdCum);
-    return {month:mo, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate, wdMonth};
+    let prevDepCum2 = 0;
+    if(prevMos.length){
+      const prevMo = prevMos[prevMos.length-1];
+      [...new Set(DB.invest.map(r=>r.acct))].forEach(acct=>{
+        const rows=DB.invest.filter(r=>r.acct===acct&&r.month<=prevMo&&r.curr!=null).sort((a,b)=>a.month.localeCompare(b.month));
+        if(rows.length) prevDepCum2+=(rows[rows.length-1].depCum||0);
+      });
+    }
+    const depMonth = Math.max(0, totalDepCum - prevDepCum2);
+    return {month:mo, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate, wdMonth, depMonth};
   });
 }
 
@@ -6297,7 +6332,7 @@ function getWeeklyTotals(){
   const weeks = [...new Set(DB.invest.map(r=>r.month))].sort()
     .filter(m=>isWeekPeriod(m));
   const accts = [...new Set(DB.invest.map(r=>r.acct))];
-  let prevWdCum=0;
+  let prevWdCum=0, prevDepCum=0;
   return weeks.map(wk=>{
     const rows = DB.invest.filter(r=>r.month===wk && r.curr!=null);
     let totalDepCum=0, totalWdCum=0;
@@ -6311,8 +6346,10 @@ function getWeeklyTotals(){
     const pnl=curr-prin;
     const rate=prin?pnl/prin:0;
     const wdWeek=Math.max(0,totalWdCum-prevWdCum);
+    const depWeek=Math.max(0,totalDepCum-prevDepCum);
     prevWdCum=totalWdCum;
-    return {week:wk, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate, wdWeek};
+    prevDepCum=totalDepCum;
+    return {week:wk, depCum:totalDepCum, wdCum:totalWdCum, prin, curr, pnl, rate, wdWeek, depWeek};
   });
 }
 
@@ -6734,9 +6771,18 @@ function renderInvMonthly(){
 
 function setTrendMode2(m){
   trendMode2=m;
-  const bA=document.getElementById('btnAsset'), bR=document.getElementById('btnRate2');
-  if(bA){ bA.style.background=m==='asset'?'var(--primary)':'var(--gray-100)'; bA.style.color=m==='asset'?'#fff':'var(--gray-600)'; }
-  if(bR){ bR.style.background=m==='rate'?'var(--green)':'var(--gray-100)'; bR.style.color=m==='rate'?'#fff':'var(--gray-600)'; }
+  const cfg=[
+    {id:'btnAsset',mode:'asset',active:'var(--primary)'},
+    {id:'btnRate2',mode:'rate',active:'var(--green)'},
+    {id:'btnDep',mode:'dep',active:'#05C072'},
+    {id:'btnWd',mode:'wd',active:'#F04452'},
+  ];
+  cfg.forEach(({id,mode,active})=>{
+    const b=document.getElementById(id); if(!b)return;
+    const on=m===mode;
+    b.style.background=on?active:'var(--gray-100)';
+    b.style.color=on?'#fff':'var(--gray-600)';
+  });
   renderInvTrendChart();
 }
 
@@ -6745,11 +6791,39 @@ function renderInvTrendChart(){
   const isWeek = invView==='week';
   const src = isWeek ? getWeeklyTotals() : getMonthlyTotalsAll();
   if(src.length<2){el.innerHTML='<p style="text-align:center;color:var(--sub);font-size:12px;padding:20px">데이터 부족</p>';return;}
-  const isAsset=trendMode2==='asset';
-  const data=src.map(m=>isAsset?m.curr:m.rate*100);
   const labels=src.map(m=>isWeek?m.week:m.month);
-  const color=isAsset?'#3182F6':'#05C072';
-  drawLineChart(el, labels, data, color, isAsset?'억':'%', isAsset?null:0);
+  if(trendMode2==='dep'||trendMode2==='wd'){
+    const isDep=trendMode2==='dep';
+    const vals=src.map(m=>isDep?(isWeek?m.depWeek:m.depMonth):(isWeek?m.wdWeek:m.wdMonth)||0);
+    const color=isDep?'#05C072':'#F04452';
+    drawSingleBarChart(el, labels, vals, color, isWeek);
+  } else {
+    const isAsset=trendMode2==='asset';
+    const data=src.map(m=>isAsset?m.curr:m.rate*100);
+    const color=isAsset?'#3182F6':'#05C072';
+    drawLineChart(el, labels, data, color, isAsset?'억':'%', isAsset?null:0);
+  }
+}
+
+function drawSingleBarChart(el, labels, vals, color, isWeek){
+  if(!el||!labels.length)return;
+  const W=300,H=130,PL=44,PR=8,PT=12,PB=24,cW=W-PL-PR,cH=H-PT-PB;
+  const max=Math.max(...vals,1)*1.15;
+  const bW=Math.min((cW/labels.length)*0.6, 20);
+  const bars=labels.map((lbl,i)=>{
+    const x=PL+(i+0.5)*(cW/labels.length);
+    const h=vals[i]/max*cH;
+    const shortLbl=isWeek?String(lbl).slice(4):String(lbl).slice(2,4)+'/'+String(lbl).slice(5,7);
+    return `<rect x="${(x-bW/2).toFixed(1)}" y="${(PT+cH-h).toFixed(1)}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${color}" opacity="0.8"/>
+    <text x="${x.toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="8" fill="#8B95A1">${shortLbl}</text>`;
+  }).join('');
+  const maxLbl=max>=100000000?(max/100000000).toFixed(1)+'억':(max/10000).toFixed(0)+'만';
+  el.innerHTML=`<svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="max-height:160px">
+    <text x="${PL-4}" y="${PT}" text-anchor="end" font-size="8" fill="#8B95A1" dominant-baseline="middle">${maxLbl}</text>
+    <line x1="${PL}" y1="${PT}" x2="${W-PR}" y2="${PT}" stroke="#F2F4F6" stroke-width="1"/>
+    <line x1="${PL}" y1="${PT+cH}" x2="${W-PR}" y2="${PT+cH}" stroke="#D1D6DB" stroke-width="1"/>
+    ${bars}
+  </svg>`;
 }
 
 // 히트맵
