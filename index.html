@@ -2522,7 +2522,7 @@ const CF_CATS = {
 // ── DB ───────────────────────────────────────────────────
 let DB = { invest:[], bank:[], debt:[], real:[], cf:[], goals:[], fixed:[], install:[], holdings:[] };
 let GAS_URL = '';
-const BUILD_DATE = '2026-05-24 KST';
+const BUILD_DATE = '2026-05-25 10:41 KST';
 let ANTHROPIC_KEY = '';
 let ACCT_ALIASES = {}; // { originalName: displayAlias }
 let ACCT_TYPES = {}; // { originalAcctName: 'general'|'isa'|'pension'|'retirement' }
@@ -6807,18 +6807,22 @@ function renderInvTrendChart(){
 
 function drawSingleBarChart(el, labels, vals, color, isWeek){
   if(!el||!labels.length)return;
-  const W=300,H=130,PL=44,PR=8,PT=12,PB=24,cW=W-PL-PR,cH=H-PT-PB;
-  const max=Math.max(...vals,1)*1.15;
+  const W=300,H=150,PL=44,PR=8,PT=12,PB=24,cW=W-PL-PR,cH=H-PT-PB;
+  const max=Math.max(...vals,1)*1.25;
   const bW=Math.min((cW/labels.length)*0.6, 20);
+  function fmtAmt(v){ return v>=100000000?(v/100000000).toFixed(1)+'억':v>=10000?(v/10000).toFixed(0)+'만':'0'; }
   const bars=labels.map((lbl,i)=>{
     const x=PL+(i+0.5)*(cW/labels.length);
-    const h=vals[i]/max*cH;
+    const h=Math.max(vals[i]/max*cH, vals[i]>0?2:0);
+    const barTop=(PT+cH-h).toFixed(1);
     const shortLbl=isWeek?String(lbl).slice(4):String(lbl).slice(2,4)+'/'+String(lbl).slice(5,7);
-    return `<rect x="${(x-bW/2).toFixed(1)}" y="${(PT+cH-h).toFixed(1)}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${color}" opacity="0.8"/>
+    const amtLbl=vals[i]>0?`<text x="${x.toFixed(1)}" y="${(PT+cH-h-3).toFixed(1)}" text-anchor="middle" font-size="7" fill="${color}" font-weight="700">${fmtAmt(vals[i])}</text>`:'';
+    return `<rect x="${(x-bW/2).toFixed(1)}" y="${barTop}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${color}" opacity="0.8"/>
+    ${amtLbl}
     <text x="${x.toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="8" fill="#8B95A1">${shortLbl}</text>`;
   }).join('');
   const maxLbl=max>=100000000?(max/100000000).toFixed(1)+'억':(max/10000).toFixed(0)+'만';
-  el.innerHTML=`<svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="max-height:160px">
+  el.innerHTML=`<svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="max-height:170px">
     <text x="${PL-4}" y="${PT}" text-anchor="end" font-size="8" fill="#8B95A1" dominant-baseline="middle">${maxLbl}</text>
     <line x1="${PL}" y1="${PT}" x2="${W-PR}" y2="${PT}" stroke="#F2F4F6" stroke-width="1"/>
     <line x1="${PL}" y1="${PT+cH}" x2="${W-PR}" y2="${PT+cH}" stroke="#D1D6DB" stroke-width="1"/>
