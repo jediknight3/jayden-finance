@@ -215,13 +215,13 @@
   <!-- Calendar -->
   <div class="calendar-wrap">
     <div class="day-headers">
+      <div class="day-header sun">일</div>
       <div class="day-header">월</div>
       <div class="day-header">화</div>
       <div class="day-header">수</div>
       <div class="day-header">목</div>
       <div class="day-header">금</div>
       <div class="day-header sat">토</div>
-      <div class="day-header sun">일</div>
     </div>
 
     <div class="calendar" id="calendar"></div>
@@ -254,35 +254,35 @@
     { day: 3,  shift: 'OF' },
     { day: 4,  shift: 'D'  },
     { day: 5,  shift: 'E'  },
-    { day: 6,  shift: 'OF' },
-    { day: 7,  shift: 'N'  },
-    { day: 8,  shift: 'N'  },
-    { day: 9,  shift: 'OF' },
-    { day: 10, shift: 'OF' },
-    { day: 11, shift: 'OH' },
-    { day: 12, shift: 'D'  },
+    { day: 6,  shift: 'OH' },
+    { day: 7,  shift: 'OF' },
+    { day: 8,  shift: 'D'  },
+    { day: 9,  shift: 'D'  },
+    { day: 10, shift: '연' },
+    { day: 11, shift: 'OF' },
+    { day: 12, shift: 'OF' },
     { day: 13, shift: 'D'  },
-    { day: 14, shift: 'E'  },
+    { day: 14, shift: 'D'  },
     { day: 15, shift: 'E'  },
-    { day: 16, shift: 'OF' },
-    { day: 17, shift: 'D'  },
+    { day: 16, shift: 'E'  },
+    { day: 17, shift: 'OF' },
     { day: 18, shift: 'D'  },
-    { day: 19, shift: '연' },
-    { day: 20, shift: 'OF' },
-    { day: 21, shift: 'E'  },
-    { day: 22, shift: 'E'  },
-    { day: 23, shift: 'OF' },
-    { day: 24, shift: 'D'  },
-    { day: 25, shift: 'D'  },
-    { day: 26, shift: 'OF' },
+    { day: 19, shift: 'D'  },
+    { day: 20, shift: '연' },
+    { day: 21, shift: 'OF' },
+    { day: 22, shift: 'N'  },
+    { day: 23, shift: 'N'  },
+    { day: 24, shift: 'OF' },
+    { day: 25, shift: 'E'  },
+    { day: 26, shift: 'E'  },
     { day: 27, shift: '연' },
-    { day: 28, shift: '연' },
-    { day: 29, shift: '연' },
-    { day: 30, shift: 'OF' },
+    { day: 28, shift: 'OF' },
+    { day: 29, shift: 'E'  },
+    { day: 30, shift: 'E'  },
   ];
 
-  // June 1 2026 = Monday → offset 0 in a Mon-first week
-  const startOffset = 0;
+  // June 1 2026 = Monday → offset 1 in a Sun-first week (Sun=0, Mon=1 …)
+  const startOffset = 1;
 
   const shiftLabel = { D: 'D', E: 'E', N: 'N', OF: 'OF', OH: 'OH', '연': '연', '보건': '보건', '교육': '교육' };
   const shiftBg = {
@@ -300,9 +300,9 @@
   }
 
   schedule.forEach(({ day, shift }) => {
-    const col = (startOffset + day - 1) % 7; // 0=Mon … 5=Sat 6=Sun
-    const isSat = col === 5;
-    const isSun = col === 6;
+    const col = (startOffset + day - 1) % 7; // 0=Sun, 1=Mon … 6=Sat
+    const isSun = col === 0;
+    const isSat = col === 6;
 
     const cell = document.createElement('div');
     cell.className = `day-cell ${shiftBg[shift] || ''} ${isSat ? 'sat' : ''} ${isSun ? 'sun' : ''}`;
