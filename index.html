@@ -2672,10 +2672,8 @@ async function syncAll(){
   setLoading(true,'동기화 중...');
   try{
     const sheets = ['invest','bank','debt','real','cf','goals','fixed','install'];
-    for(const s of sheets){
-      const r = await gasReq({sheet:s});
-      if(r.ok) DB[s]=deduplicateSheet(s, r.data);
-    }
+    const results = await Promise.all(sheets.map(s=>gasReq({sheet:s}).catch(()=>null)));
+    results.forEach((r,i)=>{ if(r&&r.ok) DB[sheets[i]]=deduplicateSheet(sheets[i], r.data); });
     normalizeInvestAccts(); saveCache(); renderAll();
     setLoading(false); showToast('✅ 동기화 완료!','success');
   }catch(e){
@@ -6158,44 +6156,50 @@ async function init(){
   renderCfCatOptions();
   renderSettings();
 
-  // GAS URL 있으면 항상 최신 데이터로 덮어씌우기 (캐시 무시)
+  // GAS URL 있으면 최신 데이터로 동기화
+  // 캐시 있으면 백그라운드 동기화(비차단), 없으면 풀스크린 로딩
   if(GAS_URL){
-    setLoading(true,'최신 데이터 불러오는 중...');
+    const hasCache = DB.invest.length > 0 && DB.invest !== INIT_INVEST;
+    if(!hasCache) setLoading(true,'최신 데이터 불러오는 중...');
+    else showToast('동기화 중...','',99999);
+
+    const numFields = {
+      debt:    ['balance','monthly','rate'],
+      invest:  ['dep','wd','depCum','wdCum','curr'],
+      bank:    ['balance','rate'],
+      real:    ['buyPrice','currPrice'],
+      cf:      ['amount'],
+      install: ['totalAmt','months','monthly','rate','remainMonths'],
+      fixed:   ['amount'],
+      goals:   ['targetAmount','currentAmount']
+    };
+
+    const sheets=['invest','bank','debt','real','cf','goals','fixed','install'];
     try{
-      const sheets=['invest','bank','debt','real','cf','goals','fixed','install'];
+      // 모든 시트를 병렬로 동시 요청
+      const results = await Promise.all(sheets.map(s=>gasReq({sheet:s}).catch(()=>null)));
       let updated=false;
-      for(const s of sheets){
-        const r=await gasReq({sheet:s});
-        if(r.ok && r.data.length){
-          // undefined/null 항목 제거
-          // 숫자 필드 자동 변환 (GAS는 문자열로 반환)
-          const numFields = {
-            debt: ['balance','monthly','rate'],
-            invest: ['dep','wd','depCum','wdCum','curr'],
-            bank: ['balance','rate'],
-            real: ['buyPrice','currPrice'],
-            cf: ['amount'],
-            install: ['totalAmt','months','monthly','rate','remainMonths'],
-            fixed: ['amount'],
-            goals: ['targetAmount','currentAmount']
-          };
-          const fields = numFields[s] || [];
-          DB[s]=deduplicateSheet(s, r.data
-            .filter(item=>item&&typeof item==='object'&&Object.keys(item).length>0)
-            .map(item=>{
-              if(!fields.length) return item;
-              const converted={...item};
-              fields.forEach(f=>{ if(f in converted) converted[f]=Number(converted[f])||0; });
-              return converted;
-            }));
-          updated=true;
-        }
-      }
+      results.forEach((r,i)=>{
+        const s=sheets[i];
+        if(!r||!r.ok||!r.data.length) return;
+        const fields=numFields[s]||[];
+        DB[s]=deduplicateSheet(s, r.data
+          .filter(item=>item&&typeof item==='object'&&Object.keys(item).length>0)
+          .map(item=>{
+            if(!fields.length) return item;
+            const converted={...item};
+            fields.forEach(f=>{ if(f in converted) converted[f]=Number(converted[f])||0; });
+            return converted;
+          }));
+        updated=true;
+      });
       if(updated){ normalizeInvestAccts(); saveCache(); renderAll(); }
       setLoading(false);
+      if(hasCache) showToast('✅ 동기화 완료','success',1800);
     }catch(e){
       setLoading(false);
-      console.warn('시트 동기화 실패, 캐시 사용:', e.message);
+      if(hasCache) showToast('동기화 실패, 캐시 사용 중','warn',2500);
+      else console.warn('시트 동기화 실패, 캐시 사용:', e.message);
     }
   }
 
