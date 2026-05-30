@@ -1156,6 +1156,9 @@ body {
       <div id="fixedList" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;margin-bottom:16px"></div>
 
       <!-- 이번달 자동반영 버튼 -->
+      <button onclick="importDebtToFixed()" class="btn" style="width:100%;margin-bottom:8px;background:#E3F2FD;color:#1565C0;font-weight:700">
+        🏦 부채 월납입 고정지출로 가져오기
+      </button>
       <button onclick="applyFixedToThisMonth()" class="btn btn-green" style="width:100%;margin-bottom:16px">
         📅 이번달 현금흐름에 자동 반영
       </button>
@@ -4714,10 +4717,11 @@ function updateFixedAutoToggle(){
 }
 document.addEventListener('change', e=>{ if(e.target.id==='fixed-auto') updateFixedAutoToggle(); });
 
-// 부채 월납입 → 고정지출 형식으로 변환
+// 부채 월납입 → 고정지출 형식으로 변환 (이미 저장된 항목 제외)
 function getDebtAsFixed(){
+  const savedNames = new Set((DB.fixed||[]).map(r=>r.name));
   return (DB.debt||[])
-    .filter(r=>r&&r.id&&r.name&&(Number(r.monthly)||0)>0)
+    .filter(r=>r&&r.id&&r.name&&(Number(r.monthly)||0)>0 && !savedNames.has(r.name))
     .map(r=>({
       id: 'debt_'+r.id,
       name: r.name,
@@ -4730,6 +4734,40 @@ function getDebtAsFixed(){
       memo: r.company||'',
       _fromDebt: true,
     }));
+}
+
+// 부채 월납입 → DB.fixed 실제 저장
+async function importDebtToFixed(){
+  const candidates = (DB.debt||[]).filter(r=>r&&r.id&&r.name&&(Number(r.monthly)||0)>0);
+  if(!candidates.length){ showToast('월납입이 있는 대출 항목이 없습니다','warn'); return; }
+  const savedNames = new Set((DB.fixed||[]).map(r=>r.name));
+  const toImport = candidates.filter(r=>!savedNames.has(r.name));
+  if(!toImport.length){ showToast('이미 모두 고정지출에 등록되어 있습니다','warn'); return; }
+  if(!confirm(`${toImport.map(r=>r.name+' ('+fmtN(Number(r.monthly))+'원)').join('\n')}\n\n위 ${toImport.length}건을 고정지출로 저장할까요?`)) return;
+  setLoading(true,'저장 중...');
+  try{
+    for(const r of toImport){
+      const rec = {
+        id: 'fixed_debt_'+r.id,
+        name: r.name,
+        cat: '대출이자/원금',
+        amount: Number(r.monthly)||0,
+        day: '0',
+        status: '활성',
+        start: r.start||'',
+        end: r.end||'',
+        autoApply: false,
+        memo: r.company||'',
+      };
+      await gasUpsert('fixed', rec);
+    }
+    setLoading(false);
+    showToast(`✅ ${toImport.length}건 고정지출 등록 완료!`,'success');
+    renderAll();
+  }catch(e){
+    setLoading(false);
+    showToast('저장 실패: '+e.message,'error');
+  }
 }
 
 // 이번달 활성 고정지출 목록 (부채 월납입 포함)
