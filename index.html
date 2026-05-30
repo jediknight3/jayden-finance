@@ -1823,7 +1823,6 @@ body {
           <label class="form-label">납부일</label>
           <select class="form-input form-select" id="fixed-day">
             <option value="0">매월 자동</option>
-            ${Array.from({length:28},(_,i)=>`<option value="${i+1}">${i+1}일</option>`).join('')}
           </select>
         </div>
       </div>
@@ -6200,6 +6199,16 @@ async function init(){
       setLoading(false);
       if(hasCache) showToast('동기화 실패, 캐시 사용 중','warn',2500);
       else console.warn('시트 동기화 실패, 캐시 사용:', e.message);
+    }
+  }
+
+  // 고정지출 납부일 옵션 생성
+  const fixedDayEl = document.getElementById('fixed-day');
+  if(fixedDayEl){
+    for(let i=1;i<=28;i++){
+      const opt=document.createElement('option');
+      opt.value=i; opt.textContent=i+'일';
+      fixedDayEl.appendChild(opt);
     }
   }
 
