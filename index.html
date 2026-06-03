@@ -895,6 +895,7 @@ body {
             <div style="display:flex;gap:8px;margin-bottom:10px">
               <select id="holdings-acct-sel" class="form-input" style="flex:1;font-size:13px">
                 <option value="">계좌 선택</option>
+                <option value="__auto__">🔍 계좌 자동 감지</option>
                 <option value="토스증권(본인)">토스증권(본인)</option>
                 <option value="신한(ISA)">신한(ISA)</option>
                 <option value="토스(일이)">토스(일이)</option>
@@ -5631,20 +5632,25 @@ async function onHoldingsImgSelect(input){
   if(!acct){ showToast('먼저 계좌를 선택해주세요','warn'); input.value=''; return; }
   if(!ANTHROPIC_KEY){ showToast('설정 탭에서 Anthropic API 키를 먼저 입력해주세요','warn'); input.value=''; return; }
 
+  const autoMode = acct === '__auto__';
   const loading = document.getElementById('holdings-parse-loading');
   const prevWrap = document.getElementById('holdings-preview-wrap');
   loading.style.display='block'; prevWrap.style.display='none';
   pendingHoldings=[];
 
+  const knownAccts = [...new Set(DB.invest.map(r=>r.acct))].filter(Boolean);
+
   try{
     for(const file of Array.from(input.files)){
       const b64 = await fileToBase64(file);
       const mediaType = file.type || 'image/jpeg';
-      const parsed = await parseHoldingsImage(b64, mediaType);
+      const parsed = autoMode
+        ? await parseHoldingsImageAuto(b64, mediaType, knownAccts)
+        : await parseHoldingsImage(b64, mediaType);
       pendingHoldings.push(...parsed);
     }
     if(!pendingHoldings.length){ showToast('종목을 찾지 못했습니다. 다른 이미지를 시도해보세요','warn'); return; }
-    showHoldingsPreview(acct, pendingHoldings);
+    showHoldingsPreview(autoMode ? '__auto__' : acct, pendingHoldings);
   }catch(e){
     showToast('파싱 실패: '+e.message,'error');
   }finally{
@@ -5929,14 +5935,54 @@ JSON 배열만 출력 (설명 없이):`;
   return JSON.parse(match[0]);
 }
 
+async function parseHoldingsImageAuto(b64, mediaType, knownAccts){
+  const acctList = knownAccts.length ? `알려진 계좌 목록: ${knownAccts.join(', ')}` : '';
+  const prompt = `이 이미지는 증권 앱의 보유종목 화면입니다.
+화면에 보이는 모든 종목을 JSON 배열로 추출하고, 각 종목이 속한 계좌명도 함께 포함해주세요.
+${acctList}
+각 항목: {"acct":"계좌명(앱/화면에서 추정, 알려진 목록과 가장 근접한 이름으로)","ticker":"종목코드/이름","shares":수량(숫자),"currValue":평가금액(원,숫자),"gain":손익금액(원,숫자,손실이면 음수),"gainRate":수익률(소수점,예:1.8286은 182.86%)}
+- 금액에서 쉼표와 '원' 제거, 숫자만
+- 수익률: 퍼센트 값을 100으로 나눈 소수 (182.86% → 1.8286)
+- 손실이면 gain과 gainRate 음수
+- 계좌명을 특정할 수 없으면 "미확인" 사용
+JSON 배열만 출력 (설명 없이):`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':ANTHROPIC_KEY,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:2000,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
+        {type:'text',text:prompt}
+      ]}]
+    })
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error?.message||'API 오류');
+  const text = (data.content?.[0]?.text||'').trim();
+  const match = text.match(/\[[\s\S]*\]/);
+  if(!match) throw new Error('JSON 파싱 실패: '+text.slice(0,100));
+  return JSON.parse(match[0]);
+}
+
 function showHoldingsPreview(acct, items){
   const wrap = document.getElementById('holdings-preview-wrap');
   const title = document.getElementById('holdings-preview-title');
   const tbl = document.getElementById('holdings-preview-table');
-  title.textContent = `${acct} — ${items.length}개 종목 추출됨`;
+  const isAuto = acct === '__auto__';
+  title.textContent = isAuto ? `전체 — ${items.length}개 종목 추출됨` : `${acct} — ${items.length}개 종목 추출됨`;
+  const acctCol = isAuto ? `<th style="padding:7px 8px;text-align:left">계좌</th>` : '';
   tbl.innerHTML = `<div style="overflow-x:auto;border-radius:8px;overflow:hidden">
   <table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="background:#1A2B4A;color:#fff">
+      ${acctCol}
       <th style="padding:7px 10px;text-align:left">종목</th>
       <th style="padding:7px 8px;text-align:right">수량</th>
       <th style="padding:7px 8px;text-align:right">평가금액</th>
@@ -5944,6 +5990,7 @@ function showHoldingsPreview(acct, items){
       <th style="padding:7px 8px;text-align:right">수익률</th>
     </tr></thead>
     <tbody>${items.map((it,i)=>`<tr style="${i%2?'':'background:var(--gray-50)'}">
+      ${isAuto?`<td style="padding:7px 8px;font-size:11px;color:var(--sub)">${it.acct||'미확인'}</td>`:''}
       <td style="padding:7px 10px;font-weight:700">${it.ticker}</td>
       <td style="padding:7px 8px;text-align:right;color:var(--sub)">${it.shares!=null?Number(it.shares).toLocaleString('ko-KR',{maximumFractionDigits:6}):'-'}</td>
       <td style="padding:7px 8px;text-align:right;font-weight:700">${fmtN(it.currValue)}</td>
@@ -5958,16 +6005,26 @@ function showHoldingsPreview(acct, items){
 function confirmSaveHoldings(){
   const wrap = document.getElementById('holdings-preview-wrap');
   const acct = wrap._acct;
+  const isAuto = acct === '__auto__';
   const snapDate = new Date().toISOString().slice(0,10);
-  // 해당 계좌 기존 항목 제거 후 새로 저장
-  DB.holdings = DB.holdings.filter(h=>h.acct!==acct);
-  pendingHoldings.forEach(it=>{
-    DB.holdings.push({acct, ticker:it.ticker, shares:it.shares||0, currValue:it.currValue||0, gain:it.gain||0, gainRate:it.gainRate||0, snapDate});
-  });
+  if(isAuto){
+    // 자동 감지: 각 항목의 acct 필드 사용, 감지된 계좌들 일괄 교체
+    const detectedAccts = [...new Set(pendingHoldings.map(it=>it.acct||'미확인'))];
+    DB.holdings = DB.holdings.filter(h=>!detectedAccts.includes(h.acct));
+    pendingHoldings.forEach(it=>{
+      DB.holdings.push({acct:it.acct||'미확인', ticker:it.ticker, shares:it.shares||0, currValue:it.currValue||0, gain:it.gain||0, gainRate:it.gainRate||0, snapDate});
+    });
+    showToast(`✅ ${detectedAccts.join(', ')} — ${pendingHoldings.length}개 종목 저장 완료`,'success');
+  } else {
+    DB.holdings = DB.holdings.filter(h=>h.acct!==acct);
+    pendingHoldings.forEach(it=>{
+      DB.holdings.push({acct, ticker:it.ticker, shares:it.shares||0, currValue:it.currValue||0, gain:it.gain||0, gainRate:it.gainRate||0, snapDate});
+    });
+    showToast(`✅ ${acct} ${pendingHoldings.length}개 종목 저장 완료`,'success');
+  }
   saveCache();
   wrap.style.display='none';
   renderHoldings();
-  showToast(`✅ ${acct} ${pendingHoldings.length}개 종목 저장 완료`,'success');
 }
 
 function renderHoldings(){
