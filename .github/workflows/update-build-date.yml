@@ -1,0 +1,31 @@
+name: Auto-update BUILD_DATE
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  update-build-date:
+    runs-on: ubuntu-latest
+    # 자동 커밋이 다시 트리거되지 않도록 [skip ci] 커밋은 건너뜀
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update BUILD_DATE in index.html
+        run: |
+          BUILD_DATE=$(TZ='Asia/Seoul' date '+%Y-%m-%d %H:%M KST')
+          sed -i "s/const BUILD_DATE = '[^']*'/const BUILD_DATE = '${BUILD_DATE}'/" index.html
+          echo "BUILD_DATE set to: ${BUILD_DATE}"
+
+      - name: Commit updated BUILD_DATE
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --staged --quiet || git commit -m "chore: auto-update BUILD_DATE [skip ci]"
+          git push
