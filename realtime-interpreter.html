@@ -6,181 +6,184 @@
 <title>실시간 동시통역</title>
 <style>
 :root {
-  --bg:      #0f1117;
-  --panel:   #161b27;
-  --card:    #1e2436;
-  --border:  #2a3045;
-  --accent:  #5b73ff;
-  --a-glow:  rgba(91,115,255,.25);
-  --text:    #e2e8f8;
-  --dim:     #6b7a9e;
-  --muted:   #3d4766;
-  --green:   #34d399;
-  --red:     #f87171;
+  --bg: #0f1117; --surface: #161b27; --card: #1e2436;
+  --border: #252d42; --border2: #2e3a56;
+  --accent: #5b73ff; --accent2: #a855f7;
+  --text: #dde4f8; --dim: #6a7a9e; --muted: #3a4460;
+  --green: #22c55e; --red: #f87171; --yellow: #fbbf24;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
-  font-size: 14px; line-height: 1.5; overflow: hidden; }
+  font-size: 14px; overflow: hidden; }
 
-/* ── Layout ── */
-.app    { height: 100vh; display: flex; flex-direction: column; }
-header  { height: 52px; background: var(--panel); border-bottom: 1px solid var(--border);
-          display: flex; align-items: center; gap: 14px; padding: 0 18px; flex-shrink: 0; }
-.toolbar{ background: var(--panel); border-bottom: 1px solid var(--border);
-          display: flex; align-items: center; gap: 10px; padding: 8px 18px; flex-shrink: 0; flex-wrap: wrap; }
-.panels { flex: 1; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
-.panel  { display: flex; flex-direction: column; overflow: hidden;
-          border-right: 1px solid var(--border); }
-.panel:last-child { border-right: none; }
-.statusbar { height: 32px; background: var(--panel); border-top: 1px solid var(--border);
-             display: flex; align-items: center; gap: 8px; padding: 0 18px; flex-shrink: 0; }
+/* ── 앱 뼈대 ── */
+.app { height: 100vh; display: flex; flex-direction: column; }
 
-/* ── Header ── */
-.brand { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+/* ── 상단 셋업 바 ── */
+.setup {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap;
+}
+.brand { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; margin-right: 4px; }
 .brand-ico { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
-             background: linear-gradient(135deg, #5b73ff, #a855f7); font-size: 15px; }
-.api-row { flex: 1; display: flex; align-items: center; gap: 6px; max-width: 400px; margin-left: auto; }
-input.api { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 7px;
-            padding: 5px 10px; color: var(--text); font-size: 12px; outline: none; min-width: 0; }
-input.api:focus { border-color: var(--accent); }
-input.api::placeholder { color: var(--muted); }
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); font-size: 15px; }
+.setup-tabs { display: flex; gap: 4px; }
+.stab { background: var(--card); border: 1px solid var(--border2); border-radius: 6px; padding: 4px 10px;
+  font-size: 11px; color: var(--dim); cursor: pointer; transition: all .15s; }
+.stab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.setup-input-row { flex: 1; display: flex; gap: 6px; min-width: 0; max-width: 480px; }
+input.sinput { flex: 1; background: var(--card); border: 1px solid var(--border2); border-radius: 7px;
+  padding: 6px 10px; color: var(--text); font-size: 12px; outline: none; min-width: 0; }
+input.sinput:focus { border-color: var(--accent); }
+input.sinput::placeholder { color: var(--muted); }
 .btn-save { background: var(--accent); color: #fff; border: none; border-radius: 7px;
-            padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .btn-save:hover { opacity: .88; }
-select.mdl { background: var(--card); border: 1px solid var(--border); border-radius: 7px;
-             padding: 5px 8px; color: var(--text); font-size: 12px; cursor: pointer; outline: none; }
+select.mdl { background: var(--card); border: 1px solid var(--border2); border-radius: 7px;
+  padding: 6px 8px; color: var(--text); font-size: 12px; cursor: pointer; outline: none; white-space: nowrap; }
+.setup-status { font-size: 11px; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ss-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.ss-dot.ok  { background: var(--green); }
+.ss-dot.err { background: var(--red); }
 
-/* ── Toolbar ── */
-.lang-row { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
-select.lng { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 7px;
-             padding: 6px 8px; color: var(--text); font-size: 13px; cursor: pointer; outline: none; min-width: 0; }
+/* ── 툴바 ── */
+.toolbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 8px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap;
+}
+.lang-row { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 200px; }
+select.lng { flex: 1; background: var(--card); border: 1px solid var(--border2); border-radius: 7px;
+  padding: 6px 8px; color: var(--text); font-size: 13px; cursor: pointer; outline: none; }
 select.lng:focus { border-color: var(--accent); }
-.btn-swap { width: 30px; height: 30px; background: var(--card); border: 1px solid var(--border);
-            border-radius: 50%; color: var(--dim); font-size: 13px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-            transition: all .15s; }
+.btn-swap { width: 30px; height: 30px; background: var(--card); border: 1px solid var(--border2);
+  border-radius: 50%; color: var(--dim); font-size: 13px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
 .btn-swap:hover { border-color: var(--accent); color: var(--accent); }
-.sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
-.tts-lbl { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim);
-           cursor: pointer; white-space: nowrap; user-select: none; }
-.sw { width: 30px; height: 16px; background: var(--card); border: 1px solid var(--border);
-      border-radius: 8px; position: relative; transition: all .2s; }
+.vsep { width: 1px; height: 22px; background: var(--border2); flex-shrink: 0; }
+.tts-row { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim);
+  cursor: pointer; user-select: none; white-space: nowrap; }
+.sw { width: 30px; height: 16px; background: var(--card); border: 1px solid var(--border2);
+  border-radius: 8px; position: relative; transition: all .2s; }
 .sw.on { background: var(--accent); border-color: var(--accent); }
 .sw::after { content: ''; position: absolute; width: 10px; height: 10px; background: #fff;
-             border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
+  border-radius: 50%; top: 2px; left: 2px; transition: left .2s; }
 .sw.on::after { left: 16px; }
-.btn-clr { background: none; border: 1px solid var(--border); border-radius: 7px;
-           padding: 5px 10px; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.btn-clr { background: none; border: 1px solid var(--border2); border-radius: 7px;
+  padding: 5px 10px; color: var(--muted); font-size: 12px; cursor: pointer; }
 .btn-clr:hover { border-color: var(--red); color: var(--red); }
 .btn-go { display: flex; align-items: center; gap: 6px; padding: 7px 16px; border: none;
-          border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer;
-          flex-shrink: 0; transition: all .2s; }
-.btn-go.idle { background: linear-gradient(135deg,#5b73ff,#a855f7); color: #fff;
-               box-shadow: 0 0 14px var(--a-glow); }
-.btn-go.idle:hover { transform: translateY(-1px); box-shadow: 0 0 22px var(--a-glow); }
-.btn-go.live { background: var(--red); color: #fff; animation: pulse-btn 2s infinite; }
-@keyframes pulse-btn { 0%,100%{ box-shadow:0 0 10px rgba(248,113,113,.3); } 50%{ box-shadow:0 0 20px rgba(248,113,113,.5); } }
+  border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0; transition: all .2s; }
+.btn-go.idle { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+  box-shadow: 0 0 16px rgba(91,115,255,.3); }
+.btn-go.idle:hover { transform: translateY(-1px); }
+.btn-go.live { background: var(--red); color: #fff; animation: pulse-go 2s infinite; }
+@keyframes pulse-go { 0%,100%{box-shadow:0 0 10px rgba(248,113,113,.3)} 50%{box-shadow:0 0 22px rgba(248,113,113,.5)} }
 .rdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.btn-go.live .rdot { animation: blink 1s step-end infinite; }
+.btn-go.live .rdot { animation: blink .9s step-end infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-/* ── Panel ── */
-.ph { padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--panel);
-      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+/* ── 패널 ── */
+.panels { flex: 1; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.panel { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+.panel:last-child { border-right: none; }
+.ph { padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--surface);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .pt { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
 .pa { display: flex; align-items: center; gap: 7px; }
-.chip { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: var(--card);
-        color: var(--dim); border: 1px solid var(--border); }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: var(--card); color: var(--dim); border: 1px solid var(--border2); }
 .wv { display: flex; align-items: center; gap: 2px; height: 14px; }
-.wb { width: 2px; height: 3px; background: var(--accent); border-radius: 1px; opacity: .35; }
-.btn-ca { font-size: 11px; padding: 2px 8px; background: none; border: 1px solid var(--border);
-          border-radius: 6px; color: var(--dim); cursor: pointer; }
+.wb { width: 2px; height: 3px; background: var(--accent); border-radius: 1px; opacity: .3; transition: height .1s; }
+.btn-ca { font-size: 11px; padding: 2px 8px; background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--dim); cursor: pointer; }
 .btn-ca:hover { border-color: var(--accent); color: var(--accent); }
 .pb { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 9px; }
 .pb::-webkit-scrollbar { width: 3px; }
-.pb::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.pb::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-/* ── Entries ── */
-.entry { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-         padding: 9px 11px; animation: fadeUp .2s ease; }
+/* ── 엔트리 ── */
+.entry { background: var(--card); border: 1px solid var(--border2); border-radius: 8px;
+  padding: 9px 12px; animation: fadeUp .2s ease; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
-.et { font-size: 15px; line-height: 1.7; word-break: break-word; }
-.et.interim { color: var(--dim); font-style: italic; }
-.em { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.etext { font-size: 15px; line-height: 1.7; word-break: break-word; }
+.etext.interim { color: var(--dim); font-style: italic; }
+.emeta { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
 .etime { font-size: 10px; color: var(--muted); }
-.ecopy { font-size: 10px; background: none; border: none; color: var(--muted); cursor: pointer;
-         padding: 1px 5px; border-radius: 3px; }
-.ecopy:hover { background: var(--panel); color: var(--dim); }
-
-/* Loading dots */
-.ldots { display: flex; align-items: center; gap: 6px; padding: 8px 11px; color: var(--dim); font-size: 12px; }
+.ecopy { font-size: 10px; background: none; border: none; color: var(--muted); cursor: pointer; padding: 1px 5px; border-radius: 3px; }
+.ecopy:hover { background: var(--surface); color: var(--dim); }
+/* 로딩 */
+.ldots { display: flex; align-items: center; gap: 6px; padding: 9px 12px; color: var(--dim); font-size: 12px; }
 .ld { display: flex; gap: 3px; }
 .ld span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: dp 1.2s infinite; }
 .ld span:nth-child(2){animation-delay:.15s} .ld span:nth-child(3){animation-delay:.3s}
 @keyframes dp { 0%,80%,100%{transform:scale(.5);opacity:.4} 40%{transform:scale(1);opacity:1} }
+/* 빈 상태 */
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; color: var(--muted); }
+.ei { font-size: 30px; opacity: .28; }
+.em { font-size: 12px; text-align: center; line-height: 1.6; }
 
-/* Empty */
-.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-         gap: 8px; color: var(--muted); }
-.ei { font-size: 30px; opacity: .3; }
-.em2 { font-size: 12px; text-align: center; line-height: 1.6; }
-
-/* Statusbar */
+/* ── 상태바 ── */
+.statusbar { height: 30px; background: var(--surface); border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; padding: 0 16px; flex-shrink: 0; }
 .sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .sdot.on { background: var(--green); animation: pdot 1.5s infinite; }
 @keyframes pdot { 0%,100%{opacity:1} 50%{opacity:.3} }
 .smsg { font-size: 11px; color: var(--dim); }
 .sstat { margin-left: auto; font-size: 10px; color: var(--muted); }
 
-/* Responsive */
 @media(max-width:680px){
   html,body{overflow:auto}
   .app{height:auto}
   .panels{grid-template-columns:1fr;overflow:visible}
   .panel{min-height:220px;border-right:none;border-bottom:1px solid var(--border)}
-  .api-row{max-width:100%}
 }
 </style>
 </head>
 <body>
 <div class="app">
 
-<!-- ── Header ── -->
-<header>
-  <div class="brand">
-    <div class="brand-ico">🌐</div>
-    실시간 동시통역
-  </div>
-  <div class="api-row">
-    <input type="password" class="api" id="apiInput" placeholder="Anthropic API Key  (sk-ant-…)">
-    <button class="btn-save" onclick="saveKey()">저장</button>
-    <select class="mdl" id="mdlSel" onchange="savePref()">
-      <option value="claude-haiku-4-5-20251001">⚡ Haiku</option>
-      <option value="claude-sonnet-4-6">✨ Sonnet</option>
-    </select>
-  </div>
-</header>
+<!-- ── 셋업 바 ── -->
+<div class="setup">
+  <div class="brand"><div class="brand-ico">🌐</div>실시간 동시통역</div>
 
-<!-- ── Toolbar ── -->
+  <div class="setup-tabs">
+    <div class="stab on" id="tabKey" onclick="setTab('key')">API 키</div>
+    <div class="stab"    id="tabGas" onclick="setTab('gas')">GAS URL</div>
+  </div>
+
+  <div class="setup-input-row">
+    <input type="password" class="sinput" id="keyInput" placeholder="sk-ant-api03-…">
+    <input type="url"      class="sinput" id="gasInput" placeholder="https://script.google.com/…" style="display:none">
+    <button class="btn-save" onclick="saveCfg()">저장</button>
+  </div>
+
+  <select class="mdl" id="mdlSel" onchange="savePref()">
+    <option value="claude-haiku-4-5-20251001">⚡ Haiku (빠름)</option>
+    <option value="claude-sonnet-4-6">✨ Sonnet (정확)</option>
+  </select>
+
+  <div class="setup-status">
+    <div class="ss-dot" id="cfgDot"></div>
+    <span id="cfgMsg">미설정</span>
+  </div>
+</div>
+
+<!-- ── 툴바 ── -->
 <div class="toolbar">
   <div class="lang-row">
     <select class="lng" id="srcSel" onchange="onLang()"></select>
-    <button class="btn-swap" onclick="swapLang()" title="교체">⇄</button>
+    <button class="btn-swap" onclick="swapLang()" title="언어 교체">⇄</button>
     <select class="lng" id="tgtSel" onchange="onLang()"></select>
   </div>
-  <div class="sep"></div>
-  <label class="tts-lbl" onclick="toggleTTS()">
-    <div class="sw" id="ttsSw"></div>🔊 음성
-  </label>
+  <div class="vsep"></div>
+  <label class="tts-row" onclick="toggleTTS()"><div class="sw" id="ttsSw"></div>🔊 음성</label>
   <button class="btn-clr" onclick="clearAll()">🗑 지우기</button>
   <button class="btn-go idle" id="goBtn" onclick="toggle()">
-    <div class="rdot"></div>
-    <span id="goLbl">통역 시작</span>
+    <div class="rdot"></div><span id="goLbl">통역 시작</span>
   </button>
 </div>
 
-<!-- ── Panels ── -->
+<!-- ── 패널 ── -->
 <div class="panels">
   <div class="panel">
     <div class="ph">
@@ -196,7 +199,7 @@ select.lng:focus { border-color: var(--accent); }
     <div class="pb" id="srcBody">
       <div class="empty" id="srcEmpty">
         <div class="ei">🎙️</div>
-        <div class="em2">통역 시작을 누르고<br>말씀하세요</div>
+        <div class="em">통역 시작을 누르고<br>말씀하세요</div>
       </div>
     </div>
   </div>
@@ -211,144 +214,176 @@ select.lng:focus { border-color: var(--accent); }
     <div class="pb" id="tgtBody">
       <div class="empty" id="tgtEmpty">
         <div class="ei">🌐</div>
-        <div class="em2">번역된 내용이<br>여기에 표시됩니다</div>
+        <div class="em">번역된 내용이<br>여기에 표시됩니다</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── Statusbar ── -->
+<!-- ── 상태바 ── -->
 <div class="statusbar">
   <div class="sdot" id="sdot"></div>
-  <span class="smsg" id="smsg">API 키를 입력 후 통역을 시작하세요</span>
+  <span class="smsg" id="smsg">위에서 API 키 또는 GAS URL을 입력하고 저장하세요</span>
   <span class="sstat" id="sstat"></span>
 </div>
 
-</div><!-- .app -->
+</div>
 
 <script>
 'use strict';
 
-/* ═══════════════════════════════════════
-   CONSTANTS
-═══════════════════════════════════════ */
+/* ──────────────────────────────────────────
+   언어 목록
+────────────────────────────────────────── */
 const LANGS = [
   ['ko-KR','한국어'],['en-US','English (US)'],['en-GB','English (UK)'],
   ['ja-JP','日本語'],['zh-CN','中文 (简体)'],['zh-TW','中文 (繁體)'],
   ['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],
-  ['pt-BR','Português (BR)'],['ru-RU','Русский'],['ar-SA','العربية'],
+  ['pt-BR','Português'],['ru-RU','Русский'],['ar-SA','العربية'],
   ['vi-VN','Tiếng Việt'],['th-TH','ภาษาไทย'],['id-ID','Bahasa Indonesia'],
 ];
 const LMAP = Object.fromEntries(LANGS);
 
-/* ═══════════════════════════════════════
-   STATE
-═══════════════════════════════════════ */
-let apiKey = '';
-let live    = false;    // session running?
-let ttsOn   = false;
+/* ──────────────────────────────────────────
+   전역 상태
+────────────────────────────────────────── */
+let cfg = { mode: 'key', key: '', gas: '' };  // API 설정
+let live = false;
+let ttsOn = false;
 
-let micStream  = null;  // kept alive to suppress repeated mic-access notifications
-let audioCtx   = null;
-let recog      = null;
-let rtTimer    = null;  // restart timer
-let interimEl  = null;
-
-let nSrc = 0, nTgt = 0;
+let micStream = null;   // AudioContext keep-alive 용 스트림
+let audioCtx  = null;
+let recog     = null;
+let rtTimer   = null;
+let interimEl = null;
 let waveTimer = null;
+let nSrc = 0, nTgt = 0;
 
-/* ═══════════════════════════════════════
-   INIT
-═══════════════════════════════════════ */
+/* ──────────────────────────────────────────
+   초기화
+────────────────────────────────────────── */
 (function boot() {
-  // Build language dropdowns
   ['srcSel','tgtSel'].forEach(id => {
-    const sel = document.getElementById(id);
-    LANGS.forEach(([v,t]) => sel.add(new Option(t, v)));
+    const sel = $id(id);
+    LANGS.forEach(([v,t]) => sel.add(new Option(t,v)));
   });
 
-  // Restore preferences
-  apiKey = lsGet('key') || '';
-  ttsOn  = lsGet('tts') === '1';
-  document.getElementById('apiInput').value   = apiKey || '';
-  document.getElementById('ttsSw').classList.toggle('on', ttsOn);
-  document.getElementById('srcSel').value     = lsGet('src') || 'ko-KR';
-  document.getElementById('tgtSel').value     = lsGet('tgt') || 'en-US';
-  document.getElementById('mdlSel').value     = lsGet('mdl') || 'claude-haiku-4-5-20251001';
+  cfg.mode = ls('mode') || 'key';
+  cfg.key  = ls('key')  || '';
+  cfg.gas  = ls('gas')  || '';
+  ttsOn    = ls('tts')  === '1';
 
+  $id('keyInput').value  = cfg.key;
+  $id('gasInput').value  = cfg.gas;
+  $id('ttsSw').classList.toggle('on', ttsOn);
+  $id('srcSel').value    = ls('src') || 'ko-KR';
+  $id('tgtSel').value    = ls('tgt') || 'en-US';
+  $id('mdlSel').value    = ls('mdl') || 'claude-haiku-4-5-20251001';
+
+  setTab(cfg.mode, false);
   refreshChips();
+  updateCfgStatus();
 })();
 
-/* ═══════════════════════════════════════
-   SETTINGS
-═══════════════════════════════════════ */
-function saveKey() {
-  const v = document.getElementById('apiInput').value.trim();
-  if (!v) { flash('API 키를 입력하세요'); return; }
-  apiKey = v;
-  lsSet('key', v);
+/* ──────────────────────────────────────────
+   탭 전환 (API키 / GAS URL)
+────────────────────────────────────────── */
+function setTab(mode, save = true) {
+  cfg.mode = mode;
+  $id('tabKey').classList.toggle('on', mode === 'key');
+  $id('tabGas').classList.toggle('on', mode === 'gas');
+  $id('keyInput').style.display = mode === 'key' ? '' : 'none';
+  $id('gasInput').style.display = mode === 'gas' ? '' : 'none';
+  if (save) ls('mode', mode);
+}
+
+/* ──────────────────────────────────────────
+   설정 저장
+────────────────────────────────────────── */
+function saveCfg() {
+  if (cfg.mode === 'key') {
+    cfg.key = $id('keyInput').value.trim();
+    if (!cfg.key) { flash('API 키를 입력하세요', 'warn'); return; }
+    ls('key', cfg.key);
+  } else {
+    cfg.gas = $id('gasInput').value.trim();
+    if (!cfg.gas) { flash('GAS URL을 입력하세요', 'warn'); return; }
+    ls('gas', cfg.gas);
+  }
+  updateCfgStatus();
   flash('저장 완료 ✓');
 }
 
-function savePref() {
-  lsSet('src', document.getElementById('srcSel').value);
-  lsSet('tgt', document.getElementById('tgtSel').value);
-  lsSet('mdl', document.getElementById('mdlSel').value);
+function updateCfgStatus() {
+  const ok = cfg.mode === 'key' ? !!cfg.key : !!cfg.gas;
+  const dot = $id('cfgDot');
+  dot.className = 'ss-dot ' + (ok ? 'ok' : 'err');
+  $id('cfgMsg').textContent = ok
+    ? (cfg.mode === 'key' ? 'API 키 설정됨' : 'GAS URL 설정됨')
+    : '미설정';
 }
 
+function savePref() {
+  ls('src', $id('srcSel').value);
+  ls('tgt', $id('tgtSel').value);
+  ls('mdl', $id('mdlSel').value);
+}
+
+/* ──────────────────────────────────────────
+   언어 설정
+────────────────────────────────────────── */
 function onLang() {
   refreshChips();
   savePref();
-  if (live) { stopSession(); setTimeout(startSession, 300); }
+  if (live) { stopSession(); setTimeout(startSession, 350); }
 }
 
 function swapLang() {
-  const s = document.getElementById('srcSel');
-  const t = document.getElementById('tgtSel');
+  const s = $id('srcSel'), t = $id('tgtSel');
   [s.value, t.value] = [t.value, s.value];
   onLang();
 }
 
 function refreshChips() {
-  document.getElementById('srcChip').textContent = LMAP[document.getElementById('srcSel').value] || '';
-  document.getElementById('tgtChip').textContent = LMAP[document.getElementById('tgtSel').value] || '';
+  $id('srcChip').textContent = LMAP[$id('srcSel').value] || '';
+  $id('tgtChip').textContent = LMAP[$id('tgtSel').value] || '';
 }
 
 function toggleTTS() {
   ttsOn = !ttsOn;
-  document.getElementById('ttsSw').classList.toggle('on', ttsOn);
-  lsSet('tts', ttsOn ? '1' : '0');
+  $id('ttsSw').classList.toggle('on', ttsOn);
+  ls('tts', ttsOn ? '1' : '0');
 }
 
-/* ═══════════════════════════════════════
-   SESSION  (start / stop)
-═══════════════════════════════════════ */
+/* ──────────────────────────────────────────
+   세션 시작 / 중지
+────────────────────────────────────────── */
 function toggle() { live ? stopSession() : startSession(); }
 
 async function startSession() {
-  if (!apiKey) { alert('Anthropic API 키를 먼저 입력하고 저장하세요.'); return; }
+  // 사전 체크
+  const ready = cfg.mode === 'key' ? !!cfg.key : !!cfg.gas;
+  if (!ready) { alert('위 설정 바에서 API 키 또는 GAS URL을 입력하고 저장하세요.'); return; }
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { alert('Chrome 또는 Edge 브라우저에서만 지원됩니다.'); return; }
+  if (!SR) { alert('Chrome 또는 Edge 브라우저에서만 사용 가능합니다.'); return; }
 
-  // ── AudioContext keep-alive ──────────────────────────────
-  // getUserMedia로 마이크 스트림을 먼저 획득해 AudioContext에 연결.
-  // 이 스트림이 살아있는 동안 SpeechRecognition이 재시작돼도
-  // Chrome은 마이크가 이미 사용 중임을 알기 때문에
-  // "마이크 액세스 허용됨" 알림을 반복하지 않는다.
+  // ── AudioContext keep-alive ──────────────────────────
+  // getUserMedia 스트림을 무음 AudioContext에 연결해 유지.
+  // SpeechRecognition이 재시작돼도 Chrome이 마이크를
+  // "이미 사용 중"으로 인식 → 반복 알림 없음.
   if (!micStream) {
     try {
       micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
       const src  = audioCtx.createMediaStreamSource(micStream);
       const gain = audioCtx.createGain();
-      gain.gain.value = 0;          // 무음 — 피드백 방지
-      src.connect(gain);            // destination에는 연결 안 함
+      gain.gain.value = 0;   // 무음 (피드백 없음)
+      src.connect(gain);
     } catch (e) {
-      // getUserMedia 실패(권한 거부 등) → 그냥 계속 진행
-      // SpeechRecognition 자체 권한 처리로 fallback됨
+      // 권한 거부 또는 지원 안 함 → 그냥 계속 (SpeechRecognition이 자체 처리)
+      console.warn('AudioContext keep-alive 실패:', e.message);
       micStream = null;
-      console.warn('keep-alive 스트림 실패:', e.message);
     }
   }
 
@@ -362,27 +397,25 @@ async function startSession() {
 function stopSession() {
   live = false;
   clearTimeout(rtTimer);
-
-  if (recog)      { try { recog.stop(); } catch(_){} recog = null; }
-  if (micStream)  { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
-  if (audioCtx)   { try { audioCtx.close(); } catch(_){} audioCtx = null; }
-
+  if (recog)     { try { recog.stop(); } catch(_){} recog = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (audioCtx)  { try { audioCtx.close(); } catch(_){} audioCtx = null; }
   updateBtn();
   setStatus('대기 중');
   stopWave();
   removeInterim();
 }
 
-/* ═══════════════════════════════════════
-   SPEECH RECOGNITION
-═══════════════════════════════════════ */
+/* ──────────────────────────────────────────
+   SpeechRecognition
+────────────────────────────────────────── */
 function spawnRecog(SR) {
   if (!live) return;
 
-  const r      = new SR();
-  r.lang       = document.getElementById('srcSel').value;
-  r.continuous = true;
-  r.interimResults = true;
+  const r = new SR();
+  r.lang            = $id('srcSel').value;
+  r.continuous      = true;
+  r.interimResults  = true;
   r.maxAlternatives = 1;
   recog = r;
 
@@ -399,38 +432,37 @@ function spawnRecog(SR) {
   r.onerror = e => {
     if (e.error === 'not-allowed') {
       stopSession();
-      alert('마이크 접근이 거부됐습니다.\n주소창의 🔒 → 마이크 허용 후 다시 시도하세요.');
+      alert('마이크 접근이 거부됐습니다.\n주소창 왼쪽 🔒 → 마이크 허용 후 다시 시도하세요.');
     }
-    // 'no-speech' / 'aborted' 등은 onend에서 자동 재시작
+    // no-speech / aborted → onend에서 자동 재시작
   };
 
   r.onend = () => {
     if (!live) return;
     clearTimeout(rtTimer);
-    rtTimer = setTimeout(() => spawnRecog(SR), 150);
+    rtTimer = setTimeout(() => spawnRecog(SR), 200);
   };
 
-  try { r.start(); } catch (e) {
+  try {
+    r.start();
+  } catch (e) {
     setStatus('시작 실패: ' + e.message);
-    live = false;
-    updateBtn();
-    stopWave();
+    live = false; updateBtn(); stopWave();
   }
 }
 
-/* ═══════════════════════════════════════
-   TRANSCRIPT DISPLAY
-═══════════════════════════════════════ */
+/* ──────────────────────────────────────────
+   텍스트 표시
+────────────────────────────────────────── */
 function showInterim(text) {
   killEmpty('srcEmpty');
-  const body = document.getElementById('srcBody');
   if (!interimEl) {
-    interimEl = mkEl('div', 'entry');
-    interimEl.innerHTML = '<div class="et interim" id="itxt"></div>';
-    body.appendChild(interimEl);
+    interimEl = div('entry');
+    interimEl.innerHTML = '<div class="etext interim" id="itxt"></div>';
+    $id('srcBody').appendChild(interimEl);
   }
-  document.getElementById('itxt').textContent = text;
-  body.scrollTop = body.scrollHeight;
+  $id('itxt').textContent = text;
+  $id('srcBody').scrollTop = 9999;
 }
 
 function removeInterim() {
@@ -441,83 +473,92 @@ function commitFinal(text) {
   removeInterim();
   killEmpty('srcEmpty');
   const ts = nowStr();
-  appendEntry('srcBody', text, ts);
+  $id('srcBody').appendChild(mkEntry(text, ts));
+  $id('srcBody').scrollTop = 9999;
   nSrc++;
   refreshStats();
-  doTranslate(text, ts);
+  translate(text, ts);
 }
 
-/* ═══════════════════════════════════════
-   TRANSLATION  (Claude API)
-═══════════════════════════════════════ */
-async function doTranslate(text, ts) {
-  const tLang  = document.getElementById('tgtSel').value;
-  const tName  = LMAP[tLang] || tLang;
-  const model  = document.getElementById('mdlSel').value;
-  const body   = document.getElementById('tgtBody');
+/* ──────────────────────────────────────────
+   번역 (Claude API 직접 or GAS 프록시)
+────────────────────────────────────────── */
+async function translate(text, ts) {
+  const tLang = $id('tgtSel').value;
+  const tName = LMAP[tLang] || tLang;
+  const model = $id('mdlSel').value;
+  const body  = $id('tgtBody');
 
   killEmpty('tgtEmpty');
 
-  // placeholder while waiting
-  const loader = mkEl('div', 'ldots');
+  const loader = div('ldots');
   loader.innerHTML = '<div class="ld"><span></span><span></span><span></span></div> 번역 중…';
   body.appendChild(loader);
-  body.scrollTop = body.scrollHeight;
+  body.scrollTop = 9999;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method : 'POST',
-      headers: {
-        'Content-Type'  : 'application/json',
-        'x-api-key'     : apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-client-side-api-key-access': 'true',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 1024,
-        system: `You are a professional simultaneous interpreter. Translate into ${tName}. Return ONLY the translated text — no explanation, no quotes.`,
-        messages: [{ role: 'user', content: text }],
-      }),
-    });
+    let translated = '';
 
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error?.message || res.statusText);
+    if (cfg.mode === 'key') {
+      // ── 직접 API 호출 ──────────────────────────────
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method : 'POST',
+        headers: {
+          'Content-Type'   : 'application/json',
+          'x-api-key'      : cfg.key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          system: `You are a professional simultaneous interpreter. Translate the input into ${tName}. Return ONLY the translated text, nothing else.`,
+          messages: [{ role: 'user', content: text }],
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || `HTTP ${res.status}`);
+      translated = (json.content?.[0]?.text || '').trim();
 
-    const out = (json.content?.[0]?.text || '').trim();
-    loader.replaceWith(makeEntryEl(out, ts));
-    body.scrollTop = body.scrollHeight;
+    } else {
+      // ── GAS 프록시 호출 ────────────────────────────
+      const prompt = `다음 텍스트를 ${tName}로 번역해줘. 번역문만 출력하고 다른 말은 하지 마.\n\n${text}`;
+      const url = cfg.gas + '?action=ai&prompt=' + encodeURIComponent(prompt);
+      const res  = await fetch(url);
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'GAS 오류');
+      translated = (json.text || '').trim();
+    }
+
+    loader.replaceWith(mkEntry(translated, ts));
+    body.scrollTop = 9999;
     nTgt++;
     refreshStats();
 
     if (ttsOn && window.speechSynthesis) {
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(out);
+      const u = new SpeechSynthesisUtterance(translated);
       u.lang = tLang;
       speechSynthesis.speak(u);
     }
+
   } catch (e) {
-    const errEl = mkEl('div', 'entry');
-    errEl.innerHTML = `<div class="et" style="color:var(--red);font-size:12px">⚠ ${esc(e.message)}</div>`;
-    loader.replaceWith(errEl);
-    body.scrollTop = body.scrollHeight;
-    console.error('[translate]', e);
+    const el = div('entry');
+    el.innerHTML = `<div class="etext" style="color:var(--red);font-size:12px">⚠ 번역 실패: ${esc(e.message)}</div>`;
+    loader.replaceWith(el);
+    body.scrollTop = 9999;
+    console.error('[번역 오류]', e);
   }
 }
 
-/* ═══════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════ */
-function appendEntry(bodyId, text, ts) {
-  document.getElementById(bodyId).appendChild(makeEntryEl(text, ts));
-  document.getElementById(bodyId).scrollTop = 999999;
-}
-
-function makeEntryEl(text, ts) {
-  const el = mkEl('div', 'entry');
+/* ──────────────────────────────────────────
+   UI 헬퍼
+────────────────────────────────────────── */
+function mkEntry(text, ts) {
+  const el = div('entry');
   el.innerHTML = `
-    <div class="et">${esc(text)}</div>
-    <div class="em">
+    <div class="etext">${esc(text)}</div>
+    <div class="emeta">
       <span class="etime">${ts}</span>
       <button class="ecopy">복사</button>
     </div>`;
@@ -527,70 +568,60 @@ function makeEntryEl(text, ts) {
 }
 
 function clearAll() {
-  document.getElementById('srcBody').innerHTML =
-    '<div class="empty" id="srcEmpty"><div class="ei">🎙️</div><div class="em2">통역 시작을 누르고<br>말씀하세요</div></div>';
-  document.getElementById('tgtBody').innerHTML =
-    '<div class="empty" id="tgtEmpty"><div class="ei">🌐</div><div class="em2">번역된 내용이<br>여기에 표시됩니다</div></div>';
-  interimEl = null;
-  nSrc = nTgt = 0;
-  refreshStats();
+  $id('srcBody').innerHTML =
+    '<div class="empty" id="srcEmpty"><div class="ei">🎙️</div><div class="em">통역 시작을 누르고<br>말씀하세요</div></div>';
+  $id('tgtBody').innerHTML =
+    '<div class="empty" id="tgtEmpty"><div class="ei">🌐</div><div class="em">번역된 내용이<br>여기에 표시됩니다</div></div>';
+  interimEl = null; nSrc = nTgt = 0; refreshStats();
 }
 
 function copyAll() {
-  const t = [...document.querySelectorAll('#tgtBody .et')]
-    .map(e => e.textContent).join('\n\n');
+  const t = [...document.querySelectorAll('#tgtBody .etext')].map(e => e.textContent).join('\n\n');
   if (t) navigator.clipboard.writeText(t).then(() => flash('복사 완료 ✓'));
 }
 
 function updateBtn() {
-  document.getElementById('goBtn').className = 'btn-go ' + (live ? 'live' : 'idle');
-  document.getElementById('goLbl').textContent = live ? '통역 중지' : '통역 시작';
+  $id('goBtn').className = 'btn-go ' + (live ? 'live' : 'idle');
+  $id('goLbl').textContent = live ? '통역 중지' : '통역 시작';
 }
 
 function setStatus(msg, on = false) {
-  document.getElementById('smsg').textContent = msg;
-  document.getElementById('sdot').className = 'sdot' + (on ? ' on' : '');
+  $id('smsg').textContent = msg;
+  $id('sdot').className = 'sdot' + (on ? ' on' : '');
 }
 
-function flash(msg) {
-  const el = document.getElementById('smsg');
-  const prev = el.textContent;
-  const wasOn = document.getElementById('sdot').classList.contains('on');
-  setStatus(msg);
+function flash(msg, type = 'ok') {
+  const prev = $id('smsg').textContent;
+  const wasOn = $id('sdot').classList.contains('on');
+  setStatus((type === 'warn' ? '⚠ ' : '✓ ') + msg);
   setTimeout(() => setStatus(prev, wasOn), 2500);
 }
 
 function refreshStats() {
-  document.getElementById('sstat').textContent =
-    nSrc > 0 ? `발화 ${nSrc} · 번역 ${nTgt}` : '';
+  $id('sstat').textContent = nSrc > 0 ? `발화 ${nSrc} · 번역 ${nTgt}` : '';
 }
 
-const WH = [3, 7, 12, 18, 12, 7, 3];
+const WH = [3,7,13,18,13,7,3];
 function startWave() {
   stopWave();
-  const bars = document.querySelectorAll('.wb');
   waveTimer = setInterval(() => {
-    bars.forEach((b, i) => {
-      b.style.height = (WH[i] * (.5 + Math.random() * .5)) + 'px';
+    document.querySelectorAll('.wb').forEach((b,i) => {
+      b.style.height = (WH[i]*(.5+Math.random()*.5))+'px';
       b.style.opacity = '1';
     });
   }, 110);
 }
 function stopWave() {
   if (waveTimer) { clearInterval(waveTimer); waveTimer = null; }
-  document.querySelectorAll('.wb').forEach(b => { b.style.height = '3px'; b.style.opacity = '.3'; });
+  document.querySelectorAll('.wb').forEach(b => { b.style.height='3px'; b.style.opacity='.3'; });
 }
 
-function killEmpty(id) { const el = document.getElementById(id); if (el) el.remove(); }
-function mkEl(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
-function nowStr() {
-  return new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function lsGet(k)    { return localStorage.getItem('rta_' + k); }
-function lsSet(k, v) { localStorage.setItem('rta_' + k, v); }
+function killEmpty(id) { const e = $id(id); if (e) e.remove(); }
+function div(cls)       { const e = document.createElement('div'); e.className = cls; return e; }
+function $id(id)        { return document.getElementById(id); }
+function nowStr()       { return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function esc(s)         { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function ls(k,v)        { if(v===undefined) return localStorage.getItem('rta_'+k); localStorage.setItem('rta_'+k,v); }
 </script>
 </body>
 </html>
