@@ -4054,6 +4054,39 @@ function calcInvPreview(){
   document.getElementById('inv-calc-box').style.display='block';
 }
 
+async function syncWeeklyToMonthly(acct, weekPeriod){
+  const wInfo=getWeekInfo(weekPeriod);
+  const monthKey=`${wInfo.year}-${String(wInfo.month).padStart(2,'0')}`;
+
+  // 해당 월의 모든 주별 레코드 (최신 순 정렬)
+  const weeklyInMonth=DB.invest
+    .filter(r=>r.acct===acct&&isWeekPeriod(r.month)&&weekToMonthStr(r.month)===monthKey)
+    .sort((a,b)=>a.month.localeCompare(b.month));
+
+  if(!weeklyInMonth.length) return; // 주별 데이터 없으면 패스
+
+  const totalDep=weeklyInMonth.reduce((s,r)=>s+(r.dep||0),0);
+  const totalWd =weeklyInMonth.reduce((s,r)=>s+(r.wd ||0),0);
+  // curr: 해당 월에서 가장 최근 주의 현재자산 (현시점 기준)
+  const latestCurr=weeklyInMonth[weeklyInMonth.length-1].curr;
+
+  // 이전 월별 레코드에서 depCum/wdCum 체인 계산
+  const prevMonthly=DB.invest
+    .filter(r=>r.acct===acct&&isMonthPeriod(r.month)&&r.month<monthKey)
+    .sort((a,b)=>a.month.localeCompare(b.month));
+  const prevLast=prevMonthly.length?prevMonthly[prevMonthly.length-1]:null;
+  const depCum=(prevLast?prevLast.depCum||0:0)+totalDep;
+  const wdCum =(prevLast?prevLast.wdCum ||0:0)+totalWd;
+
+  // 모든 주별 입/출금 항목 합산
+  const depItems=weeklyInMonth.flatMap(r=>(r.depItems||[]).filter(it=>it.amt>0||it.memo));
+  const wdItems =weeklyInMonth.flatMap(r=>(r.wdItems ||[]).filter(it=>it.amt>0||it.memo));
+
+  const monthRec={acct, month:monthKey, dep:totalDep, wd:totalWd, depCum, wdCum,
+    curr:latestCurr, depItems, wdItems};
+  await gasUpsert('invest', monthRec);
+}
+
 async function saveInvEntry(){
   const acct=document.getElementById('inv-acct').value;
   const period=getInvPeriod();
@@ -4080,6 +4113,8 @@ async function saveInvEntry(){
     depItems:invDepItems.filter(it=>it.amt>0||it.memo),
     wdItems:invWdItems.filter(it=>it.amt>0||it.memo)};
   await gasUpsert('invest',rec);
+  // 주별 입력 시 해당 월 월별 레코드 자동 동기화
+  if(invMode==='week') await syncWeeklyToMonthly(acct,period);
   renderAll(); showToast(`✅ ${acct} ${fmtPeriod(period)} 저장 완료!`,'success');
 }
 async function deleteInvEntry(){
@@ -4088,6 +4123,8 @@ async function deleteInvEntry(){
   if(!acct||!period){showToast('계좌와 기간을 선택해주세요','warn');return;}
   if(!confirm(`${acct} ${fmtPeriod(period)} 삭제할까요?`))return;
   await gasDelete('invest',acct+'|'+period);
+  // 주별 삭제 시에도 월별 재동기화
+  if(isWeekPeriod(period)) await syncWeeklyToMonthly(acct,period);
   clearInvForm(); renderAll(); showToast('🗑 삭제 완료','error');
 }
 function clearInvForm(){
@@ -5905,6 +5942,14 @@ async function confirmBulkSave(){
     }
     await gasUpsert('invest', rec);
     saved++;
+  }
+  // 주별 일괄 입력 시 해당 월 월별 레코드 자동 동기화
+  if(isWeek){
+    const accts=[...new Set(pendingBulkData.map((_,i)=>{
+      const sel=document.getElementById(`bulk-acct-sel-${i}`);
+      return sel?sel.value:pendingBulkData[i].acct;
+    }).filter(Boolean))];
+    for(const a of accts) await syncWeeklyToMonthly(a, period);
   }
   wrap.style.display='none';
   pendingBulkData=[];
