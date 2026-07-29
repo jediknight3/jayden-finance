@@ -3872,6 +3872,16 @@ function getWeekInfo(weekStr){
   return {year:yr,month:mo,weekOfMonth,weekNum:w};
 }
 
+function getWeekDateRange(weekStr){
+  const s=String(weekStr), wIdx=s.indexOf('W');
+  const y=parseInt(s.slice(0,wIdx)), w=parseInt(s.slice(wIdx+1));
+  const jan4=new Date(y,0,4), dow=jan4.getDay()||7;
+  const monday=new Date(y,0,4-dow+1+(w-1)*7);
+  const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
+  const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
+  return `${fmt(monday)} ~ ${fmt(sunday)}`;
+}
+
 function weekToMonthStr(weekStr){
   const {year,month}=getWeekInfo(weekStr);
   return `${year}-${String(month).padStart(2,'0')}`;
@@ -3933,7 +3943,8 @@ function updateWeekLabel(){
   if(!lbl) return;
   if(invMode==='week'&&wInp&&wInp.value){
     lbl.style.display='block';
-    lbl.textContent='📅 '+fmtPeriod(wInp.value.replace('-W','W'));
+    const wk=wInp.value.replace('-W','W');
+    lbl.textContent='📅 '+fmtPeriod(wk)+'  |  '+getWeekDateRange(wk);
   } else {
     lbl.style.display='none';
   }
@@ -5705,7 +5716,8 @@ function updateBulkWeekLabel(){
   const lbl=document.getElementById('bulk-week-label');
   if(!lbl||!wInp||!wInp.value) return;
   lbl.style.display='block';
-  lbl.textContent='📅 '+fmtPeriod(wInp.value.replace('-W','W'));
+  const wk=wInp.value.replace('-W','W');
+  lbl.textContent='📅 '+fmtPeriod(wk)+'  |  '+getWeekDateRange(wk);
 }
 
 function getBulkPeriod(){
