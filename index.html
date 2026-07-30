@@ -818,6 +818,13 @@ body {
             <tbody id="invMonthlyTbody"></tbody>
           </table>
         </div>
+        <!-- 주별 범위 필터 -->
+        <div id="inv-weekly-filter" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <select id="weekly-range-sel" onchange="renderInvMonthly()" style="flex:1;border:1px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;background:var(--card);color:var(--text)">
+            <option value="recent13">최근 13주</option>
+          </select>
+          <span id="weekly-range-count" style="font-size:11px;color:var(--sub);white-space:nowrap"></span>
+        </div>
         <!-- 주별 테이블 -->
         <div id="inv-weekly-table" style="background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">
           <table style="width:100%;border-collapse:collapse;min-width:420px">
@@ -6805,6 +6812,8 @@ function setInvView(v){
   if(dw) dw.style.display=v==='month'?'':'none';
   if(dwW) dwW.style.display=v==='week'?'':'none';
   if(ttl) ttl.textContent=v==='month'?'월별 전체 합계':'주별 전체 합계';
+  const wf=document.getElementById('inv-weekly-filter');
+  if(wf) wf.style.display=v==='week'?'flex':'none';
   renderInvMonthly();
 }
 
@@ -6856,9 +6865,32 @@ function renderInvMonthly(){
 
   // 주별 합계 테이블
   const wkTb = document.getElementById('invWeeklyTbody');
+  const rangeSel = document.getElementById('weekly-range-sel');
+  const rangeCount = document.getElementById('weekly-range-count');
   if(wkTb){
+    // 연도 옵션 동적 구성
+    if(rangeSel){
+      const years=[...new Set(wks.map(w=>String(w.week).slice(0,4)))].sort().reverse();
+      const curVal=rangeSel.value||'recent13';
+      rangeSel.innerHTML=
+        '<option value="recent13">최근 13주</option>'+
+        '<option value="recent26">최근 26주</option>'+
+        years.map(y=>`<option value="${y}">${y}년 전체</option>`).join('')+
+        '<option value="all">전체 보기</option>';
+      if([...rangeSel.options].some(o=>o.value===curVal)) rangeSel.value=curVal;
+      else rangeSel.value='recent13';
+    }
+    const rangeVal=rangeSel?rangeSel.value:'recent13';
+    let wksFiltered=wks;
+    if(rangeVal==='recent13') wksFiltered=wks.slice(-13);
+    else if(rangeVal==='recent26') wksFiltered=wks.slice(-26);
+    else if(rangeVal!=='all') wksFiltered=wks.filter(w=>String(w.week).startsWith(rangeVal));
+    if(rangeCount){
+      const tot=wks.length, sh=wksFiltered.length;
+      rangeCount.textContent=tot>sh?`${sh}/${tot}주 표시`:`전체 ${tot}주`;
+    }
     let prevCurr=null, prevRate=null;
-    wkTb.innerHTML = wks.map((w,i)=>{
+    wkTb.innerHTML = wksFiltered.map((w,i)=>{
       const momAmt = prevCurr!=null ? w.curr-prevCurr : null;
       const momRateVal = prevRate!=null ? w.rate-prevRate : null;
       const momStr = momAmt==null ? '<span style="color:var(--sub)">—</span>' :
@@ -6954,6 +6986,7 @@ function renderInvMonthly(){
   // 계좌별 주별 상세
   const weekDetailEl = document.getElementById('invWeeklyDetail');
   if(weekDetailEl){
+    const wRangeVal=document.getElementById('weekly-range-sel')?.value||'recent13';
     const weekAccts = [...new Set(DB.invest.filter(r=>isWeekPeriod(r.month)).map(r=>r.acct))];
     const accts = weekAccts.map(acct=>{
       const rows=DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isWeekPeriod(r.month));
@@ -6964,7 +6997,10 @@ function renderInvMonthly(){
       weekDetailEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px">주별 데이터 없음<br><span style="font-size:11px">입력 탭 → 🗓 주별로 데이터를 입력하세요</span></div>';
     } else {
       weekDetailEl.innerHTML = accts.map(acct=>{
-        const rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isWeekPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+        let rows = DB.invest.filter(r=>r.acct===acct&&r.curr!=null&&isWeekPeriod(r.month)).sort((a,b)=>a.month.localeCompare(b.month));
+        if(wRangeVal==='recent13') rows=rows.slice(-13);
+        else if(wRangeVal==='recent26') rows=rows.slice(-26);
+        else if(wRangeVal!=='all') rows=rows.filter(r=>r.month.startsWith(wRangeVal));
         return renderAcctDetailTable('🗓 '+getAcctDisplay(acct), rows, 'linear-gradient(90deg,#1565C0,#0D47A1)', '주차');
       }).join('');
     }
