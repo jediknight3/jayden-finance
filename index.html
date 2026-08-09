@@ -6216,32 +6216,83 @@ function renameHoldingTicker(acct, oldTicker){
 let aiChatHistory = []; // {role, content}[]
 
 function buildChatContext(){
-  const inv = getInvTotals();
-  const nw  = getNetWorth();
-  const mos = getMonthlyTotalsAll();
-  const wks = getWeeklyTotals();
-  const last = mos.length ? mos[mos.length-1] : null;
-  const prev = mos.length > 1 ? mos[mos.length-2] : null;
-  const accts = getAllInvLatest().map(a=>`  - ${a.acct}: ${fmtM(a.curr)} (수익률 ${fmtP(a.rate)}, 손익 ${a.pnl>=0?'+':''}${fmtN(a.pnl)}원)`).join('\n');
-  const moHist = mos.slice(-6).map(m=>`  ${fmtMo(m.month)}: 자산 ${fmtM(m.curr)}, 수익률 ${fmtP(m.rate)}`).join('\n');
-  const wkHist = wks.slice(-8).map(w=>`  ${fmtPeriod(w.week)}: 자산 ${fmtM(w.curr)}, 수익률 ${fmtP(w.rate)}`).join('\n');
-  const momChg = last&&prev ? `${fmtN(last.curr-prev.curr)}원 변화 (${last.curr>=prev.curr?'+':''}${fmtP((last.curr-prev.curr)/prev.curr)})` : '—';
-  const goalPct = (nw.total/850000000*100).toFixed(1);
+  const now=new Date();
+  const year=now.getFullYear(), yearStr=String(year);
+  const inv=getInvTotals();
+  const nw=getNetWorth();
+  const mos=getMonthlyTotalsAll();
+  const wks=getWeeklyTotals();
+  const last=mos.length?mos[mos.length-1]:null;
+  const prev=mos.length>1?mos[mos.length-2]:null;
+  const goalPct=(nw.total/850000000*100).toFixed(1);
 
-  return `당신은 재훈님의 개인 재무 어시스턴트입니다. 아래 실제 자산 데이터를 기반으로 질문에 한국어로 간결하고 정확하게 답하세요. 숫자는 "억/만" 단위로 표시하세요.
+  // 계좌별 현황
+  const accts=getAllInvLatest().map(a=>`  - ${getAcctDisplay(a.acct)}: ${fmtM(a.curr)} (수익률 ${fmtP(a.rate)}, 손익 ${a.pnl>=0?'+':''}${fmtN(a.pnl)}원)`).join('\n');
+
+  // 올해 투자 입출금 (월별 레코드만, 주별 중복 제외)
+  const yearInvRows=DB.invest.filter(r=>isMonthPeriod(r.month)&&String(r.month).startsWith(yearStr)).sort((a,b)=>a.month.localeCompare(b.month));
+  const yearDep=yearInvRows.reduce((s,r)=>s+(r.dep||0),0);
+  const yearWd=yearInvRows.reduce((s,r)=>s+(r.wd||0),0);
+  const yearInvDetail=yearInvRows.map(r=>`    ${fmtMo(r.month)}: 입금 ${fmtN(r.dep||0)} / 출금 ${fmtN(r.wd||0)}`).join('\n');
+
+  // 현금흐름 (최근 12개월)
+  const cfMonths=[...new Set(DB.cf.map(r=>r.month))].sort().slice(-12);
+  const cfDetail=cfMonths.map(m=>{
+    const cf=getCfForMonth(m);
+    return `  ${fmtMo(m)}: 수입 ${fmtN(cf.income)}, 지출 ${fmtN(cf.expense)}, 잉여 ${fmtN(cf.save)}`;
+  }).join('\n');
+  // 올해 CF 합계
+  const cfYearRows=cfMonths.filter(m=>m.startsWith(yearStr));
+  const cfYearIncome=cfYearRows.reduce((s,m)=>s+getCfForMonth(m).income,0);
+  const cfYearExpense=cfYearRows.reduce((s,m)=>s+getCfForMonth(m).expense,0);
+
+  // 부채 현황
+  const debtDetail=(DB.debt||[]).filter(r=>r&&r.name).map(r=>
+    `  - ${r.name}: 잔액 ${fmtM(Number(r.balance)||0)}, 월납입 ${fmtN(Number(r.monthly)||0)}원, 금리 ${r.rate||0}%`
+  ).join('\n');
+
+  // 은행/예금 (계좌별 최신)
+  const bankMap={};
+  (DB.bank||[]).forEach(r=>{ if(!bankMap[r.name]||r.month>bankMap[r.name].month) bankMap[r.name]=r; });
+  const bankDetail=Object.values(bankMap).map(r=>
+    `  - ${r.name}: ${fmtN(Number(r.balance)||0)}원${r.maturity?' (만기 '+r.maturity+')':''}`
+  ).join('\n');
+
+  // 월별/주별 추이
+  const moHist=mos.slice(-6).map(m=>`  ${fmtMo(m.month)}: 자산 ${fmtM(m.curr)}, 수익률 ${fmtP(m.rate)}`).join('\n');
+  const wkHist=wks.slice(-8).map(w=>`  ${fmtPeriod(w.week)}: 자산 ${fmtM(w.curr)}, 수익률 ${fmtP(w.rate)}`).join('\n');
+  const momChg=last&&prev?`${fmtN(last.curr-prev.curr)}원 변화 (${last.curr>=prev.curr?'+':''}${fmtP((last.curr-prev.curr)/prev.curr)})`:'—';
+
+  return `당신은 재훈님의 개인 재무 어시스턴트입니다. 아래 실제 앱 데이터를 기반으로 한국어로 정확하게 답하세요. 숫자는 "억/만" 단위로 표시하세요. 현재: ${year}년 ${now.getMonth()+1}월.
 
 【전체 현황】
 - 순자산: ${fmtM(nw.total)} (목표 8.5억 달성률 ${goalPct}%)
 - 투자자산: ${fmtM(inv.curr)} / 원금 ${fmtM(inv.prin)} / 손익 ${inv.pnl>=0?'+':''}${fmtN(inv.pnl)}원 / 수익률 ${fmtP(inv.rate)}
-- 부채: ${fmtM(nw.debt)} / 예금현금: ${fmtM(nw.bank)}
+- 예금/현금: ${fmtM(nw.bank)} / 부채: ${fmtM(nw.debt)}
 - 전월대비: ${momChg}
 
-【계좌별 현황】
+【계좌별 투자 현황】
 ${accts||'  데이터 없음'}
 
-【최근 월별 추이 (최근 6개월)】
+【${yearStr}년 투자 입출금】
+- 총 입금: ${fmtN(yearDep)}원 / 총 출금: ${fmtN(yearWd)}원
+${yearInvDetail||'  데이터 없음'}
+
+【${yearStr}년 현금흐름 합계】
+- 총 수입: ${fmtN(cfYearIncome)}원 / 총 지출: ${fmtN(cfYearExpense)}원 / 잉여: ${fmtN(cfYearIncome-cfYearExpense)}원
+
+【현금흐름 월별 (최근 12개월)】
+${cfDetail||'  CF 데이터 없음'}
+
+【부채 현황】
+${debtDetail||'  부채 없음'}
+
+【은행/예금 잔액】
+${bankDetail||'  데이터 없음'}
+
+【월별 투자 추이 (최근 6개월)】
 ${moHist||'  데이터 없음'}
-${wks.length?'【최근 주별 추이 (최근 8주)】\n'+wkHist:''}`;
+${wks.length?'【주별 투자 추이 (최근 8주)】\n'+wkHist:''}`;
 }
 
 function appendChatBubble(role, html, isLoading=false){
