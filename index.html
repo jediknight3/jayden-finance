@@ -1300,7 +1300,7 @@ body {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label" id="inv-period-label">년/월</label>
-          <input type="month" class="form-input" id="inv-month" value="2026-05" onchange="onInvAcctChange()">
+          <input type="month" class="form-input" id="inv-month" onchange="onInvAcctChange()">
           <input type="week"  class="form-input" id="inv-week"  style="display:none" onchange="updateWeekLabel();onInvAcctChange()">
           <div id="inv-week-label" style="display:none;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--blue-50,#EFF6FF);border-radius:6px"></div>
         </div>
@@ -1358,7 +1358,7 @@ body {
       </div>
       <div class="form-group">
         <label class="form-label" id="bulk-period-label">년/월</label>
-        <input type="month" class="form-input" id="bulk-month" value="2026-05">
+        <input type="month" class="form-input" id="bulk-month">
         <input type="week"  class="form-input" id="bulk-week"  style="display:none" onchange="updateBulkWeekLabel()">
         <div id="bulk-week-label" style="display:none;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--blue-50,#EFF6FF);border-radius:6px"></div>
       </div>
@@ -6395,6 +6395,13 @@ async function init(){
   if(!DB.invest.length) DB.invest=[...INIT_INVEST];
   if(!DB.fixed) DB.fixed=[];
   if(!DB.install) DB.install=[];
+
+  // 투자 입력 년/월 기본값을 현재 월로 세팅
+  const _curMo = nowMo();
+  const _invMoEl = document.getElementById('inv-month');
+  const _bulkMoEl = document.getElementById('bulk-month');
+  if(_invMoEl && !_invMoEl.value) _invMoEl.value = _curMo;
+  if(_bulkMoEl && !_bulkMoEl.value) _bulkMoEl.value = _curMo;
 
   applyAcctAliasesToDropdown();
   normalizeInvestAccts(); // 표시명으로 저장된 기존 레코드를 원본명으로 마이그레이션
