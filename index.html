@@ -6260,7 +6260,10 @@ function buildChatContext(){
   ).join('\n');
 
   // 월별/주별 추이
-  const moHist=mos.slice(-6).map(m=>`  ${fmtMo(m.month)}: 자산 ${fmtM(m.curr)}, 수익률 ${fmtP(m.rate)}`).join('\n');
+  const mosThisYear=mos.filter(m=>m.month.startsWith(yearStr));
+  const mosPrev=mos.filter(m=>!m.month.startsWith(yearStr)).slice(-3);
+  const moHist=mosThisYear.map(m=>`  ${fmtMo(m.month)}: 자산 ${fmtM(m.curr)}, 수익률 ${fmtP(m.rate)}`).join('\n');
+  const moPrevHist=mosPrev.map(m=>`  ${fmtMo(m.month)}: 자산 ${fmtM(m.curr)}, 수익률 ${fmtP(m.rate)}`).join('\n');
   const wkHist=wks.slice(-8).map(w=>`  ${fmtPeriod(w.week)}: 자산 ${fmtM(w.curr)}, 수익률 ${fmtP(w.rate)}`).join('\n');
   const momChg=last&&prev?`${fmtN(last.curr-prev.curr)}원 변화 (${last.curr>=prev.curr?'+':''}${fmtP((last.curr-prev.curr)/prev.curr)})`:'—';
 
@@ -6291,9 +6294,10 @@ ${debtDetail||'  부채 없음'}
 【은행/예금 잔액】
 ${bankDetail||'  데이터 없음'}
 
-【월별 투자 추이 (최근 6개월)】
+【${yearStr}년 월별 투자 추이 (올해 전체)】
 ${moHist||'  데이터 없음'}
-${wks.length?'【주별 투자 추이 (최근 8주)】\n'+wkHist:''}`;
+${moPrevHist?`\n【전년도 최근 3개월】\n${moPrevHist}`:''}
+${wks.length?'\n【주별 투자 추이 (최근 8주)】\n'+wkHist:''}`;
 }
 
 function appendChatBubble(role, html, isLoading=false){
