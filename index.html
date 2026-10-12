@@ -1915,7 +1915,13 @@ body {
         <div class="chart-title">📊 순자산 증감 원인 분해</div>
         <div id="an-wealth-breakdown"></div>
       </div>
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">월별 재무 성과</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:700;flex:1">월별 재무 성과</span>
+        <select id="an-wealth-period-sel" onchange="renderWealthAnalysis()" style="border:1px solid var(--gray-200);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;background:var(--card);color:var(--text)">
+          <option value="all">전체보기</option>
+        </select>
+        <span id="an-wealth-period-count" style="font-size:11px;color:var(--sub);white-space:nowrap"></span>
+      </div>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:var(--radius-l);box-shadow:var(--shadow-s);margin-bottom:16px">
         <table style="width:100%;border-collapse:collapse;min-width:500px">
           <thead><tr style="background:#1A2B4A">
@@ -1926,6 +1932,7 @@ body {
             <th style="padding:10px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익기여도</th>
           </tr></thead>
           <tbody id="an-wealth-tbody"></tbody>
+          <tfoot id="an-wealth-tfoot"></tfoot>
         </table>
       </div>
     </div>
@@ -5288,22 +5295,61 @@ function renderWealthAnalysis(){
 
   // 월별 성과 테이블
   const tbody = document.getElementById('an-wealth-tbody');
+  const tfoot = document.getElementById('an-wealth-tfoot');
+  const periodSel = document.getElementById('an-wealth-period-sel');
+  const periodCount = document.getElementById('an-wealth-period-count');
   if(tbody){
+    // 연도 옵션 동적 구성
+    if(periodSel){
+      const years=[...new Set(mos.map(m=>m.month.slice(0,4)))].sort().reverse();
+      const curVal=periodSel.value||'all';
+      periodSel.innerHTML=
+        '<option value="recent6">최근 6개월</option>'+
+        '<option value="recent12">최근 12개월</option>'+
+        years.map(y=>`<option value="${y}">${y}년 전체</option>`).join('')+
+        '<option value="all">전체보기</option>';
+      if([...periodSel.options].some(o=>o.value===curVal)) periodSel.value=curVal;
+      else periodSel.value='all';
+    }
+    const rangeVal=periodSel?periodSel.value:'all';
+    // 첫 번째 레코드는 기준점이므로 slice 계산 시 포함
+    let mosFiltered=mos;
+    if(rangeVal==='recent6') mosFiltered=mos.length>6?mos.slice(-(6+1)):mos;
+    else if(rangeVal==='recent12') mosFiltered=mos.length>12?mos.slice(-(12+1)):mos;
+    else if(rangeVal!=='all') mosFiltered=mos.filter(m=>m.month.startsWith(rangeVal));
+    if(periodCount){
+      const tot=mos.length, sh=Math.max(0,mosFiltered.length-1);
+      periodCount.textContent=tot-1>sh?`${sh}/${tot-1}개월 표시`:`전체 ${tot-1}개월`;
+    }
     let prevMo = null;
-    tbody.innerHTML = mos.map((m,i)=>{
+    let sumInvGain=0, sumNetSave=0, sumNetChange=0, rowCount=0;
+    tbody.innerHTML = mosFiltered.map((m,i)=>{
       const pInvGain = prevMo ? m.pnl - prevMo.pnl : 0;
       const pNetSave = prevMo ? (m.depCum-prevMo.depCum)-(m.wdCum-prevMo.wdCum) : 0;
       const pNetChange = prevMo ? m.curr-prevMo.curr : 0;
       const pContrib = pNetChange!==0 ? Math.round(pInvGain/Math.abs(pNetChange)*100) : 0;
+      const hadPrev = prevMo !== null;
+      if(hadPrev){ sumInvGain+=pInvGain; sumNetSave+=pNetSave; sumNetChange+=pNetChange; rowCount++; }
       prevMo = m;
       return `<tr style="${i%2?'':'background:var(--gray-50)'}">
         <td style="padding:9px 12px;font-size:11px;font-weight:700;white-space:nowrap">${fmtMo(m.month)}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;color:${pInvGain>=0?'var(--green)':'var(--red)'};font-weight:600">${i>0?(pInvGain>=0?'+':'')+fmtN(pInvGain):'—'}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;color:${pNetSave>=0?'var(--green)':'var(--red)'}">${i>0?(pNetSave>=0?'+':'')+fmtN(pNetSave):'—'}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pNetChange>=0?'var(--green)':'var(--red)'}">${i>0?(pNetChange>=0?'+':'')+fmtN(pNetChange):'—'}</td>
-        <td style="padding:9px 10px;font-size:11px;text-align:right;color:var(--primary)">${i>0&&pNetChange!==0?pContrib+'%':'—'}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;color:${pInvGain>=0?'var(--green)':'var(--red)'};font-weight:600">${hadPrev?(pInvGain>=0?'+':'')+fmtN(pInvGain):'—'}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;color:${pNetSave>=0?'var(--green)':'var(--red)'}">${hadPrev?(pNetSave>=0?'+':'')+fmtN(pNetSave):'—'}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${pNetChange>=0?'var(--green)':'var(--red)'}">${hadPrev?(pNetChange>=0?'+':'')+fmtN(pNetChange):'—'}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;color:var(--primary)">${hadPrev&&pNetChange!==0?pContrib+'%':'—'}</td>
       </tr>`;
     }).join('');
+    // 합계 행
+    if(tfoot && rowCount>0){
+      const sumContrib=sumNetChange!==0?Math.round(sumInvGain/Math.abs(sumNetChange)*100):0;
+      tfoot.innerHTML=`<tr style="background:#1A2B4A">
+        <td style="padding:9px 12px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap">합계 (${rowCount}개월)</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${sumInvGain>=0?'#4ADE80':'#F87171'}">${sumInvGain>=0?'+':''}${fmtN(sumInvGain)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${sumNetSave>=0?'#4ADE80':'#F87171'}">${sumNetSave>=0?'+':''}${fmtN(sumNetSave)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:${sumNetChange>=0?'#4ADE80':'#F87171'}">${sumNetChange>=0?'+':''}${fmtN(sumNetChange)}</td>
+        <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700;color:#93C5FD">${sumNetChange!==0?sumContrib+'%':'—'}</td>
+      </tr>`;
+    }
   }
 }
 
