@@ -2309,9 +2309,9 @@ function doGet(e) {
     const p = e.parameter || {};
     const sheet = p.sheet || 'invest';
     const action = p.action || '';
-    if (action === 'upsert') return handleUpsert(sheet, JSON.parse(decodeURIComponent(p.data)));
+    if (action === 'upsert') return handleUpsert(sheet, JSON.parse(p.data));
     if (action === 'delete') return handleDelete(sheet, p.id || p.key);
-    if (action === 'bulkInit') return handleBulkInit(sheet, JSON.parse(decodeURIComponent(p.data)));
+    if (action === 'bulkInit') return handleBulkInit(sheet, JSON.parse(p.data));
     if (action === 'ai') return handleAI(p.prompt || '');  // GAS가 자동 디코딩
     return readAll(sheet);
   } catch(err) { return resp({ ok:false, error:err.message }); }
@@ -2677,7 +2677,7 @@ async function gasReq(params){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
     xhr.open('GET',url,true);
-    xhr.onload=()=>{ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject(new Error('파싱오류')); } };
+    xhr.onload=()=>{ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ console.error('GAS 응답 파싱 실패 ('+xhr.status+'):', xhr.responseText.slice(0,200)); reject(new Error('파싱오류 (HTTP '+xhr.status+')')); } };
     xhr.onerror=()=>reject(new Error('네트워크 오류'));
     xhr.ontimeout=()=>reject(new Error('타임아웃'));
     xhr.timeout=20000;
@@ -2712,8 +2712,11 @@ async function gasUpsert(sheet, rec){
   saveCache();
   if(!GAS_URL) return;
   showSaving('저장 중...');
-  try{ await gasReq({sheet, action:'upsert', data:rec}); }
-  catch(e){ showToast('시트 저장 실패 — 로컬에만 저장됨','error'); }
+  try{
+    const res = await gasReq({sheet, action:'upsert', data:rec});
+    if(res && res.ok === false) showToast('시트 저장 실패 — '+(res.error||'GAS 오류'),'error');
+  }
+  catch(e){ showToast('시트 저장 실패 — '+e.message,'error'); }
   finally{ hideSaving(); }
 }
 
@@ -2722,8 +2725,11 @@ async function gasDelete(sheet, key){
   saveCache();
   if(!GAS_URL) return;
   showSaving('삭제 중...');
-  try{ await gasReq({sheet, action:'delete', id:key}); }
-  catch(e){ showToast('시트 삭제 실패','error'); }
+  try{
+    const res = await gasReq({sheet, action:'delete', id:key});
+    if(res && res.ok === false) showToast('시트 삭제 실패 — '+(res.error||'GAS 오류'),'error');
+  }
+  catch(e){ showToast('시트 삭제 실패 — '+e.message,'error'); }
   finally{ hideSaving(); }
 }
 
