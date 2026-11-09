@@ -719,6 +719,7 @@ body {
         <button class="inv-sub-btn" onclick="setInvSub('heatmap')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">🌡️ 히트맵</button>
         <button class="inv-sub-btn" onclick="setInvSub('alert')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">⚠️ 진단</button>
         <button class="inv-sub-btn" onclick="setInvSub('holdings')" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">📷 보유종목</button>
+        <button onclick="openAnnualReport()" style="border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--gray-100);color:var(--gray-600)">📅 연간</button>
       </div>
     </div>
 
@@ -7410,6 +7411,182 @@ function exportInvCSV(){
   a.click(); URL.revokeObjectURL(a.href);
   showToast('✅ CSV 다운로드 완료!','success');
 }
+
+
+// ── 연간 리포트 ──────────────────────────────────────────────
+function getYearlyReport(year){
+  const ys = String(year);
+  const allMos = getMonthlyTotalsAll();
+  const yearMos = allMos.filter(m=>m.month.startsWith(ys));
+  if(!yearMos.length) return null;
+
+  const prevMos = allMos.filter(m=>m.month<ys);
+  const prevLast = prevMos.length ? prevMos[prevMos.length-1] : null;
+  const startCurr = prevLast ? prevLast.curr : yearMos[0].curr - (yearMos[0].depMonth||0) + (yearMos[0].wdMonth||0);
+  const endMo = yearMos[yearMos.length-1];
+  const endCurr = endMo.curr;
+
+  const yearDep = yearMos.reduce((s,m)=>s+(m.depMonth||0),0);
+  const yearWd  = yearMos.reduce((s,m)=>s+(m.wdMonth||0),0);
+  const netInflow  = yearDep - yearWd;
+  const assetChange = endCurr - startCurr;
+  const invGain    = assetChange - netInflow;
+  const rate       = startCurr>0 ? invGain/startCurr : 0;
+
+  // 계좌별
+  const accts = [...new Set(DB.invest.map(r=>r.acct))];
+  const acctData = accts.map(acct=>{
+    const recs = DB.invest.filter(r=>r.acct===acct&&isMonthPeriod(r.month)&&r.curr!=null).sort((a,b)=>a.month.localeCompare(b.month));
+    const yearRecs = recs.filter(r=>r.month.startsWith(ys));
+    if(!yearRecs.length) return null;
+    const prevRecs = recs.filter(r=>r.month<ys);
+    const acctStart = prevRecs.length ? prevRecs[prevRecs.length-1].curr : 0;
+    const acctEnd   = yearRecs[yearRecs.length-1].curr;
+    const acctDep   = yearRecs.reduce((s,r)=>s+(r.dep||0),0);
+    const acctWd    = yearRecs.reduce((s,r)=>s+(r.wd||0),0);
+    const acctNet   = acctDep - acctWd;
+    const acctGain  = (acctEnd - acctStart) - acctNet;
+    const base      = acctStart||yearRecs[0].curr;
+    const acctRate  = base>0 ? acctGain/base : 0;
+    return {acct, startCurr:acctStart, endCurr:acctEnd, netInflow:acctNet, invGain:acctGain, rate:acctRate};
+  }).filter(Boolean).sort((a,b)=>b.endCurr-a.endCurr);
+
+  return {year:ys, startCurr, endCurr, netInflow, invGain, assetChange, rate, acctData};
+}
+
+function getAvailableYears(){
+  return [...new Set(DB.invest.filter(r=>isMonthPeriod(r.month)).map(r=>r.month.slice(0,4)))].sort().reverse();
+}
+
+function openAnnualReport(){
+  const modal = document.getElementById('annual-report-modal');
+  if(!modal) return;
+  const years = getAvailableYears();
+  if(!years.length){ showToast('월별 투자 데이터가 없습니다','warn'); return; }
+  const sel = document.getElementById('ar-year-sel');
+  if(sel){
+    sel.innerHTML = years.map(y=>`<option value="${y}">${y}년</option>`).join('');
+    sel.value = years[0];
+  }
+  modal.style.display='flex';
+  renderAnnualReport();
+}
+
+function closeAnnualReport(){
+  document.getElementById('annual-report-modal').style.display='none';
+}
+
+function renderAnnualReport(){
+  const year = document.getElementById('ar-year-sel')?.value;
+  if(!year) return;
+  const d = getYearlyReport(year);
+  const el = document.getElementById('ar-content');
+  if(!el) return;
+
+  if(!d){ el.innerHTML='<div style="text-align:center;padding:30px;color:var(--sub)">해당 연도 데이터 없음</div>'; return; }
+
+  const kpiColor = v => v>=0?'var(--green)':'var(--red)';
+  const pSign    = v => (v>=0?'+':'')+fmtN(v);
+  const pSignP   = v => (v>=0?'+':'')+( v*100).toFixed(1)+'%';
+
+  // 연도 비교 테이블
+  const years = getAvailableYears();
+  const compRows = years.map(y=>{
+    const r = getYearlyReport(y);
+    if(!r) return '';
+    const isCur = y===year;
+    return `<tr style="${isCur?'background:rgba(37,99,235,0.08);font-weight:700':''}">
+      <td style="padding:8px 10px;font-size:12px;white-space:nowrap">${y}년</td>
+      <td style="padding:8px 10px;font-size:12px;text-align:right">${fmtM(r.startCurr)}</td>
+      <td style="padding:8px 10px;font-size:12px;text-align:right;font-weight:700">${fmtM(r.endCurr)}</td>
+      <td style="padding:8px 10px;font-size:12px;text-align:right;color:${kpiColor(r.netInflow)}">${pSign(r.netInflow)}</td>
+      <td style="padding:8px 10px;font-size:12px;text-align:right;color:${kpiColor(r.invGain)}">${pSign(r.invGain)}</td>
+      <td style="padding:8px 10px;font-size:12px;text-align:right;color:${kpiColor(r.rate)};font-weight:700">${pSignP(r.rate)}</td>
+    </tr>`;
+  }).join('');
+
+  // 계좌별 테이블
+  const acctRows = d.acctData.map((a,i)=>`
+    <tr style="${i%2?'':'background:var(--gray-50)'}">
+      <td style="padding:9px 10px;font-size:11px;font-weight:700">${getAcctDisplay(a.acct)}</td>
+      <td style="padding:9px 10px;font-size:11px;text-align:right;color:var(--sub)">${fmtM(a.startCurr)}</td>
+      <td style="padding:9px 10px;font-size:11px;text-align:right;font-weight:700">${fmtM(a.endCurr)}</td>
+      <td style="padding:9px 10px;font-size:11px;text-align:right;color:${kpiColor(a.netInflow)}">${pSign(a.netInflow)}</td>
+      <td style="padding:9px 10px;font-size:11px;text-align:right;color:${kpiColor(a.invGain)};font-weight:600">${pSign(a.invGain)}</td>
+      <td style="padding:9px 10px;font-size:11px;text-align:right;color:${kpiColor(a.rate)};font-weight:700">${pSignP(a.rate)}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <!-- KPI -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--gray-50);border-radius:12px;padding:14px;border:1.5px solid ${d.rate>=0?'var(--green)':'var(--red)'}">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:4px">📈 연간 수익률</div>
+        <div style="font-size:22px;font-weight:800;color:${kpiColor(d.rate)}">${pSignP(d.rate)}</div>
+      </div>
+      <div style="background:var(--gray-50);border-radius:12px;padding:14px">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:4px">💰 투자수익</div>
+        <div style="font-size:18px;font-weight:800;color:${kpiColor(d.invGain)}">${pSign(d.invGain)}</div>
+      </div>
+      <div style="background:var(--gray-50);border-radius:12px;padding:14px">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:4px">📥 순입금</div>
+        <div style="font-size:18px;font-weight:800;color:${kpiColor(d.netInflow)}">${pSign(d.netInflow)}</div>
+      </div>
+      <div style="background:var(--gray-50);border-radius:12px;padding:14px">
+        <div style="font-size:10px;color:var(--sub);margin-bottom:4px">📊 자산 증감</div>
+        <div style="font-size:18px;font-weight:800;color:${kpiColor(d.assetChange)}">${pSign(d.assetChange)}</div>
+        <div style="font-size:10px;color:var(--sub);margin-top:3px">${fmtM(d.startCurr)} → ${fmtM(d.endCurr)}</div>
+      </div>
+    </div>
+
+    <!-- 계좌별 성과 -->
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">계좌별 성과</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;box-shadow:var(--shadow-s);margin-bottom:20px">
+      <table style="width:100%;border-collapse:collapse;min-width:420px">
+        <thead><tr style="background:#1A2B4A">
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left">계좌</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">연초</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">연말</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">순입금</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">투자수익</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익률</th>
+        </tr></thead>
+        <tbody>${acctRows}</tbody>
+      </table>
+    </div>
+
+    <!-- 연도 비교 -->
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">연도 비교</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;box-shadow:var(--shadow-s)">
+      <table style="width:100%;border-collapse:collapse;min-width:380px">
+        <thead><tr style="background:#1A2B4A">
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:left">연도</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">연초자산</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">연말자산</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">순입금</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">투자수익</th>
+          <th style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.8);text-align:right">수익률</th>
+        </tr></thead>
+        <tbody>${compRows}</tbody>
+      </table>
+    </div>`;
+}
 </script>
+
+<!-- 연간 리포트 모달 -->
+<div id="annual-report-modal" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0 40px">
+  <div style="width:100%;max-width:620px;margin:0 auto;padding:0 16px">
+    <div style="background:var(--card);border-radius:var(--radius-l);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <!-- 헤더 -->
+      <div style="background:#1A2B4A;padding:16px 20px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1;font-size:15px;font-weight:800;color:#fff">📅 연간 투자 리포트</div>
+        <select id="ar-year-sel" onchange="renderAnnualReport()" style="border:none;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:700;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer"></select>
+        <button onclick="closeAnnualReport()" style="border:none;background:rgba(255,255,255,0.15);color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;line-height:1">✕</button>
+      </div>
+      <!-- 콘텐츠 -->
+      <div id="ar-content" style="padding:20px"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
